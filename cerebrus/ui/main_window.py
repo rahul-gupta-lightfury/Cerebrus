@@ -1,4 +1,4 @@
-"""UI scaffold built on top of Dear ImGui."""
+"""UI scaffold built on top of Dear PyGui."""
 
 from __future__ import annotations
 
@@ -7,17 +7,17 @@ from dataclasses import dataclass
 from cerebrus.core.device_manager import DeviceManager
 from cerebrus.core.logging import get_logger
 from cerebrus.core.state import ApplicationState
-from cerebrus.ui.device_panel import DevicePanel
 from cerebrus.ui.capture_panel import CapturePanel
-from cerebrus.ui.report_panel import ReportPanel
 from cerebrus.ui.config_panel import ConfigPanel
+from cerebrus.ui.device_panel import DevicePanel
+from cerebrus.ui.report_panel import ReportPanel
 
 LOGGER = get_logger(__name__)
 
 
 @dataclass
 class CerebrusUI:
-    """Aggregates the individual Dear ImGui panels."""
+    """Aggregates the individual Dear PyGui panels."""
 
     state: ApplicationState
     device_manager: DeviceManager

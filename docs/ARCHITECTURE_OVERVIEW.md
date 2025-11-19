@@ -9,7 +9,7 @@ This document describes the high-level architecture of Cerebrus. All implementat
   - Device discovery and workload management.
   - Project configuration and profile definitions.
 - `cerebrus.ui`
-  - Dear ImGui-based UI.
+  - Dear PyGui-based UI.
   - Panels for devices, captures, reports, and configuration.
   - Error and notification surfaces.
 - `cerebrus.tools`
@@ -90,7 +90,7 @@ This document describes the high-level architecture of Cerebrus. All implementat
 
 ## UI Layer
 
-- Use Dear ImGui panels for:
+- Use Dear PyGui panels for:
   - Device list and selection.
   - Capture orchestration.
   - Report generation and browsing.

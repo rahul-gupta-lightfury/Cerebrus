@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import json
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ _yaml_module = importlib.util.find_spec("yaml")
 if _yaml_module is not None:  # pragma: no cover - environment dependent
     yaml = importlib.import_module("yaml")  # type: ignore[assignment]
 else:
+
     class _YamlShim:
         @staticmethod
         def safe_load(stream: str | Any) -> Any:
@@ -21,7 +23,12 @@ else:
     yaml = _YamlShim()  # type: ignore[assignment]
 
 from cerebrus.config import defaults
-from cerebrus.config.models import CacheConfig, CerebrusConfig, ProjectProfile, ToolPaths
+from cerebrus.config.models import (
+    CacheConfig,
+    CerebrusConfig,
+    ProjectProfile,
+    ToolPaths,
+)
 from cerebrus.config.schema import SchemaError, validate
 
 
@@ -63,7 +70,9 @@ def load_config_from_file(path: Path) -> CerebrusConfig:
     )
 
     cache_data = data.get("cache", {})
-    cache_directory = _coerce_path(cache_data.get("directory")) or defaults.DEFAULT_CACHE.directory
+    cache_directory = (
+        _coerce_path(cache_data.get("directory")) or defaults.DEFAULT_CACHE.directory
+    )
     cache = CacheConfig(
         directory=cache_directory,
         max_entries=cache_data.get("max_entries", defaults.DEFAULT_CACHE.max_entries),

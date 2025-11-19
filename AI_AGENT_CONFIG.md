@@ -38,7 +38,7 @@ Codex should treat the following as authoritative references:
   - `docs/developer/LOGGING_AND_ERROR_HANDLING.md`
 - UI docs:
   - `docs/ui/THEME_SPECIFICATION.md`
-  - `docs/ui/IMGUI_LAYOUT_GUIDELINES.md`
+  - `docs/ui/DEARPYGUI_LAYOUT_GUIDELINES.md`
   - `docs/ui/WIDGET_PATTERNS.md`
 - Installer docs:
   - `docs/installer/OVERVIEW.md`

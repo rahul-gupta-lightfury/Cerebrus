@@ -32,6 +32,12 @@ class PerfReportRunner:
         ]
         return run_tool(self.binary, args)
 
-    def from_profile(self, input_path: Path, output_dir: Path, profile: ProjectProfile) -> ToolResult:
-        spec = PerfReportSpec(input_path=input_path, output_dir=output_dir, report_type=profile.report_type)
+    def from_profile(
+        self, input_path: Path, output_dir: Path, profile: ProjectProfile
+    ) -> ToolResult:
+        spec = PerfReportSpec(
+            input_path=input_path,
+            output_dir=output_dir,
+            report_type=profile.report_type,
+        )
         return self.run(spec)

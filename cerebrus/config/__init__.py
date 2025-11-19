@@ -1,6 +1,6 @@
 """Configuration models and helpers for Cerebrus."""
 
-from .models import CerebrusConfig, CacheConfig, ProjectProfile, ToolPaths
+from .models import CacheConfig, CerebrusConfig, ProjectProfile, ToolPaths
 
 __all__ = [
     "CacheConfig",

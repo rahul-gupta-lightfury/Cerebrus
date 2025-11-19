@@ -13,7 +13,7 @@ The application will:
 
 - Initialize its Python environment.
 - Validate configuration and external tool availability.
-- Open the Dear ImGui-based UI main window.
+- Open the Dear PyGui-based UI main window.
 
 ## From Source (Developer Mode)
 
