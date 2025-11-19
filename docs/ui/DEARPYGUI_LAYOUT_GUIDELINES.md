@@ -1,6 +1,6 @@
-# ImGui Layout Guidelines
+# Dear PyGui Layout Guidelines
 
-Guidelines for constructing Dear ImGui layouts in Cerebrus.
+Guidelines for constructing Dear PyGui layouts in Cerebrus.
 
 ## General Principles
 

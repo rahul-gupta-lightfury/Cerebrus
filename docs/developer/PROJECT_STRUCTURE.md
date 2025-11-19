@@ -61,7 +61,7 @@ This structure is aspirational but should be followed when introducing new modul
 - `tools`:
   - External tool wrappers only; no UI imports.
 - `ui`:
-  - Dear ImGui UI code; calls into `core` and `tools`.
+  - Dear PyGui UI code; calls into `core` and `tools`.
 - `config`:
   - Schema and default configuration handling.
 - `cache`:
