@@ -8,11 +8,13 @@ cerebrus/
     __init__.py
     app.py
     device_manager.py
+    state.py
     config_loader.py
     profiles.py
     logging.py
   tools/
     __init__.py
+    base.py
     uaft.py
     csv/
       __init__.py
@@ -34,8 +36,10 @@ cerebrus/
     config_panel.py
   config/
     __init__.py
-    schema.py
+    models.py
     defaults.py
+    loader.py
+    schema.py
   cache/
     __init__.py
     manager.py

@@ -8,20 +8,24 @@ The configuration system provides structured access to:
 
 ## Configuration Files
 
-Suggested layout:
+All configuration currently lives in `config/cerebrus.yaml`. The file bundles
+tool paths, cache configuration, and profile definitions into a single
+schema-validated document:
 
-- `config/tools.paths.json`
-- `config/projects/<project-name>.json`
-- `config/profiles/<profile-name>.json`
-
-Example `config/tools.paths.json`:
-
-```json
-{
-  "uaft": "E:/Git/UE/Engine/Binaries/Win64/UAFT.exe",
-  "csvtools_root": "E:/Git/UE/Engine/Binaries/DotNET/CsvTools",
-  "perfreporttool": "E:/Git/UE/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe"
-}
+```yaml
+version: 1
+tool_paths:
+  uaft: E:/Git/UE/Engine/Binaries/Win64/UAFT.exe
+  csvtools_root: E:/Git/UE/Engine/Binaries/DotNET/CsvTools
+  perfreporttool: E:/Git/UE/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
+cache:
+  directory: .cerebrus-cache
+  max_entries: 50
+profiles:
+  - name: default
+    report_type: summary
+    csv_filters:
+      - stat=Unit
 ```
 
 ## Loading and Validation

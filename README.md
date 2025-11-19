@@ -65,27 +65,40 @@ Adjust this layout as the project evolves, but keep documentation in sync.
 
 4. **Configure Unreal-Tool Paths**
 
-   Create a config file (for example `config/tools.paths.json`) that points to your Unreal Engine installation binaries:
+   Update `config/cerebrus.yaml` so that it points to your Unreal Engine
+   installation binaries and declares at least one profiling profile:
 
-   ```jsonc
-   {
-     "uaft": "E:/DonE/git/UE57/Engine/Binaries/Win64/UAFT.exe",
-     "csvtools_root": "E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools",
-     "perfreporttool": "E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe"
-   }
+   ```yaml
+   version: 1
+   tool_paths:
+     uaft: E:/DonE/git/UE57/Engine/Binaries/Win64/UAFT.exe
+     csvtools_root: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools
+     perfreporttool: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
+   cache:
+     directory: .cerebrus-cache
+   profiles:
+     - name: default
+       report_type: summary
+       csv_filters:
+         - stat=Unit
    ```
 
-   Cerebrus wrappers will consume these paths rather than hardcoding anything.
+   The configuration loader validates this file on startup and injects defaults
+   if the file is missing. Cerebrus wrappers consume the resolved paths rather
+   than hardcoding anything.
 
-5. **Run the toolkit (future)**
+5. **Run the toolkit scaffold**
 
-   Once the main entrypoint exists:
+   The repository now includes a minimal bootstrap that wires the configuration
+   loader, cache manager, device manager, and UI panels together. Run it with:
 
    ```bash
    python -m cerebrus
    ```
 
-   The Dear ImGui UI will expose device management, capture flows, and reporting pipelines.
+   The scaffold logs panel activity and validates that configuration and cache
+   directories are wired correctly. It does **not** yet render a full Dear ImGui
+   experience, but it establishes the application lifecycle for follow-up work.
 
 ## Working With Codex
 

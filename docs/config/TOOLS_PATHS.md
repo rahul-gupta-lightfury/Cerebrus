@@ -4,14 +4,13 @@ This document describes how to configure paths to external tools.
 
 ## Config File
 
-Use `config/tools.paths.json` to specify paths:
+Use the `tool_paths` block inside `config/cerebrus.yaml` to specify paths:
 
-```json
-{
-  "uaft": "E:/Git/UE/Engine/Binaries/Win64/UAFT.exe",
-  "csvtools_root": "E:/Git/UE/Engine/Binaries/DotNET/CsvTools",
-  "perfreporttool": "E:/Git/UE/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe"
-}
+```yaml
+tool_paths:
+  uaft: E:/Git/UE/Engine/Binaries/Win64/UAFT.exe
+  csvtools_root: E:/Git/UE/Engine/Binaries/DotNET/CsvTools
+  perfreporttool: E:/Git/UE/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
 ```
 
 - `uaft`: Full path to `UAFT.exe`.
