@@ -89,8 +89,10 @@ Adjust this layout as the project evolves, but keep documentation in sync.
 
 5. **Run the toolkit scaffold**
 
-   The repository now includes a minimal bootstrap that wires the configuration
-   loader, cache manager, device manager, and UI panels together. Run it with:
+   `python -m cerebrus` now boots directly into the Dear PyGui dashboard. The
+   viewport mirrors the provided screenshot: overview blocks along the top,
+   capture/report columns through the middle, and a live log console stitched
+   across the bottom.
 
    ```bash
    python -m cerebrus

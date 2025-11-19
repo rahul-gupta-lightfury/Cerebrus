@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Iterable
 
 from cerebrus.config.models import CerebrusConfig, ProjectProfile
+from cerebrus.core.log_buffer import LiveLogBuffer
 
 
 @dataclass(slots=True)
@@ -25,6 +26,7 @@ class ApplicationState:
     config: CerebrusConfig
     devices: list[Device] = field(default_factory=list)
     active_profile: ProjectProfile | None = None
+    log_buffer: LiveLogBuffer = field(default_factory=LiveLogBuffer)
 
     def set_devices(self, devices: Iterable[Device]) -> None:
         self.devices = list(devices)

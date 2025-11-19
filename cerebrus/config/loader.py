@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,9 @@ from cerebrus.config.models import (
 from cerebrus.config.schema import SchemaError, validate
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 def _coerce_path(value: str | Path | None) -> Path | None:
     if value is None:
         return None
@@ -55,10 +59,18 @@ def load_config_from_file(path: Path) -> CerebrusConfig:
         return defaults.build_default_config()
 
     with path.open("r", encoding="utf-8") as handle:
-        if path.suffix.lower() == ".json":
-            data = json.load(handle)
-        else:
-            data = yaml.safe_load(handle) or {}
+        try:
+            if path.suffix.lower() == ".json":
+                data = json.load(handle)
+            else:
+                data = yaml.safe_load(handle) or {}
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            LOGGER.warning(
+                "Failed to parse configuration %s (%s); falling back to defaults",
+                path,
+                exc,
+            )
+            return defaults.build_default_config()
 
     validate(data)
 
