@@ -98,12 +98,9 @@ Adjust this layout as the project evolves, but keep documentation in sync.
    python -m cerebrus
    ```
 
-   During startup the UI:
-
-   - Streams panel initialization logs into the on-screen console.
-   - Lists connected Android devices (or a friendly placeholder if none exist).
-   - Displays descriptor rows for Capture Session, Reports, and Environment
-     health widgets so the scaffolding matches the requested layout.
+   The scaffold logs panel activity and validates that configuration and cache
+  directories are wired correctly. It does **not** yet render a full Dear PyGui
+   experience, but it establishes the application lifecycle for follow-up work.
 
 ## Working With Codex
 
