@@ -1,6 +1,6 @@
 # Project Cerebrus
 
-Python-based Windows-only toolkit with a Dear ImGui UI for managing Unreal Engine Android profiling workflows.
+Python-based Windows-only toolkit with a Dear PyGui UI (Python bindings for Dear ImGui) for managing Unreal Engine Android profiling workflows.
 
 Cerebrus orchestrates:
 - Device discovery and Android workload management.
@@ -28,7 +28,7 @@ This scaffold assumes a layout similar to:
 ```text
 /cerebrus/                # Core Python packages
   core/                   # Core orchestration logic and abstractions
-  ui/                     # Dear ImGui UI and layout logic
+  ui/                     # Dear PyGui UI and layout logic
   tools/                  # Wrappers around UAFT, CsvTools, PerfReportTool
   config/                 # Configuration and profile definitions
   cache/                  # Per-project cache management
@@ -89,16 +89,21 @@ Adjust this layout as the project evolves, but keep documentation in sync.
 
 5. **Run the toolkit scaffold**
 
-   The repository now includes a minimal bootstrap that wires the configuration
-   loader, cache manager, device manager, and UI panels together. Run it with:
+   `python -m cerebrus` now boots directly into the Dear PyGui dashboard. The
+   viewport mirrors the provided screenshot: overview blocks along the top,
+   capture/report columns through the middle, and a live log console stitched
+   across the bottom.
 
    ```bash
    python -m cerebrus
    ```
 
-   The scaffold logs panel activity and validates that configuration and cache
-   directories are wired correctly. It does **not** yet render a full Dear ImGui
-   experience, but it establishes the application lifecycle for follow-up work.
+   During startup the UI:
+
+   - Streams panel initialization logs into the on-screen console.
+   - Lists connected Android devices (or a friendly placeholder if none exist).
+   - Displays descriptor rows for Capture Session, Reports, and Environment
+     health widgets so the scaffolding matches the requested layout.
 
 ## Working With Codex
 

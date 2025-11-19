@@ -15,4 +15,6 @@ class ConfigPanel:
     state: ApplicationState
 
     def render(self) -> None:
-        LOGGER.info("Config panel exposing %d profiles", len(self.state.config.profiles))
+        LOGGER.info(
+            "Config panel exposing %d profiles", len(self.state.config.profiles)
+        )

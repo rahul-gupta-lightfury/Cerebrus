@@ -1,6 +1,6 @@
 # Theme Specification
 
-This document specifies how themes are configured and applied in the Dear ImGui UI.
+This document specifies how themes are configured and applied in the Dear PyGui UI.
 
 ## Goals
 
@@ -40,7 +40,7 @@ Example (conceptual):
 
 - Theme loader module in `cerebrus/ui/theme.py`:
   - Loads theme config.
-  - Applies settings to ImGui style object on startup.
+  - Applies settings to the Dear PyGui style object on startup.
   - Exposes a function to switch themes at runtime.
 
 ## Accessibility

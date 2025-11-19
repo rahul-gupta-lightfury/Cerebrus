@@ -1,4 +1,4 @@
-"""Dear ImGui UI scaffolding."""
+"""Dear PyGui UI scaffolding."""
 
 from .main_window import CerebrusUI
 

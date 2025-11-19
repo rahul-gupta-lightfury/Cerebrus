@@ -13,7 +13,7 @@ The application will:
 
 - Initialize its Python environment.
 - Validate configuration and external tool availability.
-- Open the Dear ImGui-based UI main window.
+- Open the Dear PyGui-based UI main window.
 
 ## From Source (Developer Mode)
 
@@ -24,36 +24,27 @@ The application will:
    .venv\Scripts\activate
    ```
 
-2. Run the main entrypoint (to be implemented):
+2. Launch the Dear PyGui dashboard (with the live log console baked in):
 
    ```bash
    python -m cerebrus
    ```
 
-or
+   The viewport immediately mirrors the provided screenshot. It renders:
 
-   ```bash
-   python -m cerebrus.main
-   ```
+   - Overview blocks describing the active profile, cache path, and intent.
+   - Connected device tiles (or a placeholder when nothing is attached).
+   - Capture Session, Reports, and Environment descriptor rows with the same
+     text labels shown in the reference UI.
+   - A **Session Live Log** region that streams the exact logging output the
+     application produces during startup and device refreshes.
 
-depending on the final structure.
+## Command-Line Arguments
 
-The main window will appear and present:
-
-- Device list panel.
-- Capture workflows.
-- Reporting and analysis tools.
-- Configuration access.
-
-## Command-Line Arguments (Planned)
-
-Cerebrus will support a small set of CLI options, for example:
-
-- `--config <file>` – override default config file.
-- `--project <name>` – select a project profile on startup.
-- `--log-level <level>` – set initial log level (e.g. DEBUG, INFO, WARNING).
-
-See `docs/developer/SETUP.md` and `docs/developer/PROJECT_STRUCTURE.md` as the runtime entrypoints solidify.
+`python -m cerebrus` currently reserves its CLI signature for future use—the
+UI launches regardless of the arguments supplied. When the toolkit needs flags
+for selecting profiles or overriding configuration locations, they will be
+documented here.
 
 ## Shutting Down
 

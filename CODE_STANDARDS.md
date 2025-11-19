@@ -23,7 +23,7 @@ This document defines the baseline coding standards for all Python and configura
 - Core layout (logical):
 
   - `cerebrus/core` – orchestration, config, state models.
-  - `cerebrus/ui` – Dear ImGui UI only; no direct process spawning.
+  - `cerebrus/ui` – Dear PyGui UI only; no direct process spawning.
   - `cerebrus/tools` – thin wrappers around external tools (UAFT, CsvTools, PerfReportTool, etc.).
   - `cerebrus/config` – configuration loading, schema validation, and profile management.
   - `cerebrus/cache` – cache operations and clean-up routines.
@@ -50,7 +50,7 @@ No module in `ui` may import `subprocess` or call external tools directly; this 
   import subprocess
   from dataclasses import dataclass
 
-  import imgui
+  from dearpygui import dearpygui as dpg
   import psutil
 
   from cerebrus.core.device import Device

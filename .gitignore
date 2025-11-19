@@ -327,6 +327,8 @@ cache/
 .cerebrus_cache/
 */cache/
 **/cache/
+!cerebrus/cache/
+!cerebrus/cache/**
 
 ###############################################
 # Installer Artifacts

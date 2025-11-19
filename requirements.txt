@@ -1,6 +1,6 @@
-imgui[bundled]
+dearpygui
 psutil
-pywin32
+pywin32; platform_system == "Windows"
 pyyaml
 requests
 pytest

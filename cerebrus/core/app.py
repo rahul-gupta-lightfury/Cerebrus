@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from cerebrus.cache.manager import CacheManager
 from cerebrus.config.models import CerebrusConfig
 from cerebrus.core.device_manager import DeviceManager
+from cerebrus.core.log_buffer import LiveLogHandler
 from cerebrus.core.logging import get_logger
 from cerebrus.core.profiles import ProfileRegistry
 from cerebrus.core.state import ApplicationState
@@ -31,6 +33,7 @@ class CerebrusApp:
         )
         self.cache_manager = CacheManager(config=self.config.cache)
         self.ui = CerebrusUI(state=self.state, device_manager=self.device_manager)
+        self._attach_live_log_handler()
 
     def initialize(self) -> None:
         LOGGER.info("Initializing Cerebrus scaffold")
@@ -41,4 +44,13 @@ class CerebrusApp:
 
     def run(self) -> None:
         LOGGER.info("Running Cerebrus UI stub")
-        self.ui.render_once()
+        self.ui.run()
+
+    def _attach_live_log_handler(self) -> None:
+        handler = LiveLogHandler(buffer=self.state.log_buffer)
+        formatter = logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+            datefmt="%H:%M:%S",
+        )
+        handler.setFormatter(formatter)
+        logging.getLogger("cerebrus").addHandler(handler)

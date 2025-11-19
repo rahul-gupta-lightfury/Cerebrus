@@ -23,7 +23,9 @@ class ToolResult:
 
     def check(self) -> "ToolResult":
         if self.returncode != 0:
-            raise RuntimeError(f"Tool failed with exit code {self.returncode}: {self.stderr}")
+            raise RuntimeError(
+                f"Tool failed with exit code {self.returncode}: {self.stderr}"
+            )
         return self
 
 
@@ -44,6 +46,8 @@ def run_tool(binary: Path, args: Iterable[str]) -> ToolResult:
     )
     if completed.returncode != 0:
         LOGGER.error(
-            "Tool %s failed", binary.name, extra={"stderr": completed.stderr, "args": full_args}
+            "Tool %s failed",
+            binary.name,
+            extra={"stderr": completed.stderr, "args": full_args},
         )
     return result

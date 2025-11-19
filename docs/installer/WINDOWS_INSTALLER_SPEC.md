@@ -28,7 +28,8 @@ Suggested installation directory (per user):
 3. Install Python packages using an offline wheel cache or pre-bundled environment.
 4. Create launcher executable or script that:
    - Activates the environment.
-   - Launches `python -m cerebrus`.
+   - Launches `python -m cerebrus` so the Dear PyGui dashboard (and embedded
+     live log console) appears immediately.
 
 ## Environment Validation
 

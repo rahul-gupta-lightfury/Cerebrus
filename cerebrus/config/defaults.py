@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cerebrus.config.models import CacheConfig, CerebrusConfig, ProjectProfile, ToolPaths
+from cerebrus.config.models import (
+    CacheConfig,
+    CerebrusConfig,
+    ProjectProfile,
+    ToolPaths,
+)
 
 DEFAULT_CONFIG_PATH = Path("config/cerebrus.yaml")
 DEFAULT_PROFILE = ProjectProfile(
