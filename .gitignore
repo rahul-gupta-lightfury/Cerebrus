@@ -205,3 +205,198 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+###############################################
+# Project Cerebrus – .gitignore
+# Windows-only, Python-based UE profiling toolkit
+###############################################
+
+###############################################
+# Python
+###############################################
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.cache
+*.egg-info/
+.eggs/
+dist/
+build/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+python_env/
+*/Scripts/
+
+# Pyinstaller / standalone binaries
+*.spec
+*.exe
+*.dll
+*.manifest
+
+###############################################
+# IDEs / Editors
+###############################################
+# VSCode
+.vscode/
+# PyCharm
+.idea/
+# Visual Studio
+*.vcxproj*
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.opensdf
+*.psess
+*.vsp
+
+###############################################
+# Logs & Diagnostics
+###############################################
+logs/
+*.log
+debug.log
+error.log
+
+###############################################
+# Local Configuration Files
+###############################################
+# Tool paths (per-user, machine-specific)
+config/tools.paths.json
+config/tools.paths.local.json
+config/local.settings.json
+*.local.json
+*.override.json
+
+# Project-specific but not committed
+config/projects/*.local.json
+config/profiles/*.local.json
+
+###############################################
+# Profiling data & captures
+###############################################
+# Raw profiling data – NEVER commit large CSV/PRC/logcat files
+captures/
+*/captures/
+**/captures/
+
+# Common profiling output files
+*.csvprofile
+*.prc
+*.udebug
+*.uprofile
+*.logcat
+logcat_*.txt
+
+# Unreal profiling output patterns
+*_profile_*.csv
+*_stats_*.csv
+*_insights_*.json
+
+###############################################
+# Generated Reports & Analysis Artifacts
+###############################################
+reports/
+**/reports/
+output/
+perf_html/
+summary_csv/
+summary_json/
+svg/
+*.svg
+*.html
+
+# PerfReportTool caches
+*.csv.cache
+*.prc.cache
+summary_table_cache/
+**/summary_table_cache/
+
+###############################################
+# Cerebrus Cache
+###############################################
+cache/
+.cerebrus_cache/
+*/cache/
+**/cache/
+
+###############################################
+# Installer Artifacts
+###############################################
+installer_build/
+installer_output/
+*.msi
+*.wixobj
+*.wixpdb
+*.cab
+
+# One-click installer runtime folders
+%LOCALAPPDATA%/Cerebrus/
+CerebrusInstaller/
+CerebrusRuntime/
+
+###############################################
+# Node / Web UI (if present in future)
+###############################################
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+###############################################
+# Unreal Engine (if any UE project files appear)
+###############################################
+# Large derived content / binaries
+Binaries/
+DerivedDataCache/
+Saved/
+Intermediate/
+
+###############################################
+# AI / Codex Support
+###############################################
+# Codex intermediates and scratch space
+.codex/
+codex_tmp/
+codex_cache/
+ai_agent_cache/
+*.codexdiff
+
+###############################################
+# Temporary / OS files
+###############################################
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# General temp
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+~$*
+.DS_Store
+
+###############################################
+# Archives (optional)
+###############################################
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.rar
+
+###############################################
+# END
+###############################################

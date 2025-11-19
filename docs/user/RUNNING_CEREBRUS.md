@@ -1,0 +1,66 @@
+# Running Cerebrus
+
+This guide explains how to start and stop Cerebrus once installed.
+
+## From the One-Click Installer
+
+When installed via the one-click installer:
+
+- Use the **Start Menu** entry “Project Cerebrus”.
+- Optionally use the desktop shortcut if enabled during installation.
+
+The application will:
+
+- Initialize its Python environment.
+- Validate configuration and external tool availability.
+- Open the Dear ImGui-based UI main window.
+
+## From Source (Developer Mode)
+
+1. Activate your virtual environment:
+
+   ```bash
+   cd cerebrus
+   .venv\Scripts\activate
+   ```
+
+2. Run the main entrypoint (to be implemented):
+
+   ```bash
+   python -m cerebrus
+   ```
+
+or
+
+   ```bash
+   python -m cerebrus.main
+   ```
+
+depending on the final structure.
+
+The main window will appear and present:
+
+- Device list panel.
+- Capture workflows.
+- Reporting and analysis tools.
+- Configuration access.
+
+## Command-Line Arguments (Planned)
+
+Cerebrus will support a small set of CLI options, for example:
+
+- `--config <file>` – override default config file.
+- `--project <name>` – select a project profile on startup.
+- `--log-level <level>` – set initial log level (e.g. DEBUG, INFO, WARNING).
+
+See `docs/developer/SETUP.md` and `docs/developer/PROJECT_STRUCTURE.md` as the runtime entrypoints solidify.
+
+## Shutting Down
+
+- Use the window close button or the **File → Exit** menu (if provided).
+- Cerebrus should:
+  - Flush logs.
+  - Close any open file handles.
+  - Stop any ongoing external tool processes gracefully.
+
+If the UI becomes unresponsive, use the Windows Task Manager as a last resort, then inspect logs for root cause.

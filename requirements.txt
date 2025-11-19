@@ -1,0 +1,9 @@
+imgui[bundled]
+psutil
+pywin32
+pyyaml
+requests
+pytest
+mypy
+black
+isort
