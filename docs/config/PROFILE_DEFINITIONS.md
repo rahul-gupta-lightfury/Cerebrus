@@ -4,33 +4,19 @@ Profiles describe how Cerebrus performs captures and reporting for different wor
 
 ## Example Profile
 
-```json
-{
-  "name": "Android_Flythrough",
-  "description": "Default Android flythrough profiling profile.",
-  "reportType": "flythrough",
-  "csvSearchPattern": "csvprofile_*.csv",
-  "metadataFilter": "build=*;device=*",
-  "charts": [
-    {
-      "name": "FrameTime",
-      "stats": ["FrameTime", "GameThreadTime", "RenderThreadTime"]
-    }
-  ],
-  "thresholds": {
-    "FrameTime_Avg_ms": 16.6,
-    "FrameTime_P95_ms": 25.0
-  }
-}
+```yaml
+- name: Android_Flythrough
+  description: Default Android flythrough profiling profile.
+  report_type: flythrough
+  csv_filters:
+    - stat=FrameTime
+    - stat=GameThreadTime
 ```
 
 - `name`: Unique identifier.
 - `description`: Human-readable explanation.
-- `reportType`: PerfReportTool `-reportType` value.
-- `csvSearchPattern`: Pattern used to locate CSV files for this profile.
-- `metadataFilter`: Optional filter passed to CsvTools or PerfReportTool.
-- `charts`: Definitions for graph presets (used by CsvToSVG).
-- `thresholds`: Named thresholds for performance budget checks.
+- `report_type`: PerfReportTool `-ReportType` value.
+- `csv_filters`: CsvTools filter arguments that constrain stats.
 
 ## Usage
 
