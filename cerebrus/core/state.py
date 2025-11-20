@@ -45,18 +45,6 @@ class ApplicationState:
     def cache_directory(self) -> Path:
         return self.config.cache.directory
 
-    @property
-    def active_device(self) -> Device | None:
-        for device in self.devices:
-            if device.identifier == self.active_device_id:
-                return device
-        return None
-
-    def set_active_device(self, device_id: str | None) -> None:
-        """Persist the selected device identifier for downstream use."""
-
-        self.active_device_id = device_id
-
     def save_profiles_to_json(self) -> Path:
         """Persist configured profiles to JSON for downstream caching paths."""
 

@@ -171,8 +171,6 @@ class CerebrusUI:
             bullet=True,
         )
         dpg.add_separator()
-        self._render_device_selection_panel()
-        dpg.add_separator()
 
         sections = self._build_layout_sections()
         midpoint = len(sections) // 2
@@ -314,8 +312,6 @@ class CerebrusUI:
     def _refresh_devices(self) -> None:
         refreshed = self.device_manager.refresh()
         self.state.set_devices(refreshed)
-        if dpg is not None:
-            self.device_panel.sync_display()
         LOGGER.info("Device list refreshed (%d device(s))", len(refreshed))
 
     def _toggle_docking(self) -> None:
