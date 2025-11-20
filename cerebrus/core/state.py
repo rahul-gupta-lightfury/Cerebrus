@@ -28,6 +28,7 @@ class ApplicationState:
     config: CerebrusConfig
     devices: list[Device] = field(default_factory=list)
     active_profile: ProjectProfile | None = None
+    active_device_id: str | None = None
     log_buffer: LiveLogBuffer = field(default_factory=LiveLogBuffer)
     profile_storage_path: Path = field(init=False)
 
@@ -36,6 +37,9 @@ class ApplicationState:
 
     def set_devices(self, devices: Iterable[Device]) -> None:
         self.devices = list(devices)
+        identifiers = {device.identifier for device in self.devices}
+        if self.active_device_id not in identifiers:
+            self.active_device_id = next(iter(identifiers), None)
 
     @property
     def cache_directory(self) -> Path:

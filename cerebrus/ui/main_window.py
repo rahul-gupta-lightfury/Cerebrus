@@ -42,7 +42,9 @@ class CerebrusUI:
     device_manager: DeviceManager
 
     def __post_init__(self) -> None:
-        self.device_panel = DevicePanel(device_manager=self.device_manager)
+        self.device_panel = DevicePanel(
+            state=self.state, device_manager=self.device_manager
+        )
         self.capture_panel = CapturePanel(state=self.state)
         self.report_panel = ReportPanel(state=self.state)
         self.config_panel = ConfigPanel(state=self.state)
@@ -140,6 +142,7 @@ class CerebrusUI:
             height=height - 60,
             no_move=True,
             no_resize=True,
+            menubar=True,
         ):
             self._render_dashboard_body()
         dpg.set_primary_window("cerebrus_root", True)
@@ -207,6 +210,16 @@ class CerebrusUI:
                 width=-1,
                 height=160,
             )
+
+    def _render_device_selection_panel(self) -> None:
+        if dpg is None:
+            LOGGER.info("Device selection panel unavailable without Dear PyGui")
+            return
+
+        self.state.set_devices(self.device_manager.refresh())
+        panel_width = max(self._viewport_size[0] - 80, 640)
+        with dpg.child_window(height=260, width=panel_width, border=True):
+            self.device_panel.render_ui()
 
     def _refresh_live_log(self) -> None:
         if not dpg.does_item_exist(self._log_widget_tag):
