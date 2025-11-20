@@ -63,45 +63,13 @@ class ProjectDefinition:
 
 
 @dataclass(slots=True)
-class ProjectStream:
-    """Declarative description of a per-project capture stream."""
+class ProjectProfile:
+    """Profiling preset describing how to filter CSV artifacts."""
 
     name: str
-    device_subdir: str
+    report_type: str = "summary"
+    csv_filters: list[str] = field(default_factory=list)
     description: str = ""
-    include_logs: bool = True
-    include_csv: bool = True
-
-
-@dataclass(slots=True)
-class ProjectDefinition:
-    """Persistent project metadata used to locate device artifacts."""
-
-    company: str
-    project: str
-    package: str
-    device_root: Path
-    pc_root: Path
-    log_dir: str = "Saved/Logs"
-    profiling_dir: str = "Saved/Profiling"
-    streams: list[ProjectStream] = field(default_factory=list)
-    notes: str = ""
-
-    @property
-    def key(self) -> str:
-        return f"{self.company}/{self.project}".lower()
-
-    def device_log_path(self, stream: ProjectStream | None = None) -> Path:
-        base = self.device_root / self.log_dir
-        if stream and stream.device_subdir:
-            return self.device_root / stream.device_subdir
-        return base
-
-    def device_profile_path(self, stream: ProjectStream | None = None) -> Path:
-        base = self.device_root / self.profiling_dir
-        if stream and stream.device_subdir:
-            return self.device_root / stream.device_subdir
-        return base
 
 
 @dataclass(slots=True)
@@ -125,5 +93,6 @@ class CerebrusConfig:
     """Top-level configuration blob."""
 
     tool_paths: ToolPaths
+    profiles: list[ProjectProfile] = field(default_factory=list)
     cache: CacheConfig = field(default_factory=CacheConfig)
     project_paths: ProjectPathsConfig = field(default_factory=ProjectPathsConfig)

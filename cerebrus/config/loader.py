@@ -89,7 +89,7 @@ def load_config_from_file(path: Path) -> CerebrusConfig:
         or defaults.DEFAULT_PROJECT_PATHS.cache_file,
     )
 
-    profiles = _parse_profiles(data["profiles"])
+    profiles = _parse_profiles(data.get("profiles", []))
 
     return CerebrusConfig(
         tool_paths=tool_paths,
@@ -100,3 +100,20 @@ def load_config_from_file(path: Path) -> CerebrusConfig:
 
 
 __all__ = ["load_config_from_file", "SchemaError"]
+
+
+def _parse_profiles(raw_profiles: list[dict]) -> list[ProjectProfile]:
+    profiles: list[ProjectProfile] = []
+    for item in raw_profiles:
+        if not isinstance(item, dict):
+            LOGGER.warning("Skipping invalid profile entry: %s", item)
+            continue
+        profiles.append(
+            ProjectProfile(
+                name=item.get("name", ""),
+                report_type=item.get("report_type", "summary"),
+                csv_filters=item.get("csv_filters", []),
+                description=item.get("description", ""),
+            )
+        )
+    return profiles

@@ -32,6 +32,7 @@ class CerebrusApp:
         uaft = UAFTTool(binary=self.config.tool_paths.uaft)
         self.device_manager = DeviceManager(uaft=uaft)
         self.cache_manager = CacheManager(config=self.config.cache)
+        self.profile_registry = ProfileRegistry(profiles=self.config.profiles)
         project_store = ProjectStore(
             definition_file=self.config.project_paths.definition_file,
             cache_file=self.config.project_paths.cache_file,
@@ -57,7 +58,9 @@ class CerebrusApp:
         devices = self.device_manager.refresh()
         self.state.set_devices(devices)
         self.state.set_projects(self.project_registry.list_projects())
-        self.state.active_profile = self.profile_registry.list_profiles()[0]
+        profiles = self.profile_registry.list_profiles()
+        if profiles:
+            self.state.active_profile = profiles[0]
 
     def run(self) -> None:
         LOGGER.info("Running Cerebrus UI stub")
