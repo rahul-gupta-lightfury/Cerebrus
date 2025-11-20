@@ -78,6 +78,7 @@ class CerebrusUI:
         self._build_viewport()
         dpg.setup_dearpygui()
         dpg.show_viewport()
+        self._activate_primary_window()
 
         try:
             while dpg.is_dearpygui_running():
@@ -146,6 +147,13 @@ class CerebrusUI:
             no_resize=True,
         ):
             self._render_dashboard_body()
+
+    def _activate_primary_window(self) -> None:
+        """Ensure the root window becomes the active Dear PyGui viewport."""
+
+        if not dpg.does_item_exist("cerebrus_root"):
+            LOGGER.warning("Primary window tag missing; skipping activation")
+            return
         dpg.set_primary_window("cerebrus_root", True)
 
     def _render_dashboard_body(self) -> None:
