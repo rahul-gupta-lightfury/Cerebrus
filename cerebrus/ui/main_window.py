@@ -13,6 +13,7 @@ except Exception:  # noqa: BLE001 - environments without a GPU/display fall back
 from cerebrus.core.device_manager import DeviceManager
 from cerebrus.core.logging import get_logger
 from cerebrus.core.state import ApplicationState
+from cerebrus.core.artifacts import AndroidArtifactManager
 from cerebrus.ui.capture_panel import CapturePanel
 from cerebrus.ui.config_panel import ConfigPanel
 from cerebrus.ui.device_panel import DevicePanel
@@ -40,10 +41,13 @@ class CerebrusUI:
 
     state: ApplicationState
     device_manager: DeviceManager
+    artifact_manager: AndroidArtifactManager
 
     def __post_init__(self) -> None:
         self.device_panel = DevicePanel(device_manager=self.device_manager)
-        self.capture_panel = CapturePanel(state=self.state)
+        self.capture_panel = CapturePanel(
+            state=self.state, artifact_manager=self.artifact_manager
+        )
         self.report_panel = ReportPanel(state=self.state)
         self.config_panel = ConfigPanel(state=self.state)
         self._log_widget_tag = "cerebrus-live-log"
@@ -74,6 +78,7 @@ class CerebrusUI:
         self._build_viewport()
         dpg.setup_dearpygui()
         dpg.show_viewport()
+        self._activate_primary_window()
 
         try:
             while dpg.is_dearpygui_running():
@@ -142,6 +147,13 @@ class CerebrusUI:
             no_resize=True,
         ):
             self._render_dashboard_body()
+
+    def _activate_primary_window(self) -> None:
+        """Ensure the root window becomes the active Dear PyGui viewport."""
+
+        if not dpg.does_item_exist("cerebrus_root"):
+            LOGGER.warning("Primary window tag missing; skipping activation")
+            return
         dpg.set_primary_window("cerebrus_root", True)
 
     def _render_dashboard_body(self) -> None:

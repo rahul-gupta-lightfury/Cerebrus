@@ -1,0 +1,23 @@
+{
+  "projects": [
+    {
+      "company": "ExampleStudio",
+      "project": "SampleUnrealGame",
+      "package": "com.example.sample",
+      "device_root": "/sdcard/Android/data/com.example.sample/files",
+      "pc_root": "~/CerebrusCaptures/SampleUnrealGame",
+      "log_dir": "Saved/Logs",
+      "profiling_dir": "Saved/Profiling",
+      "streams": [
+        {
+          "name": "Default",
+          "device_subdir": "Saved/Logs",
+          "description": "Primary Unreal log output",
+          "include_logs": true,
+          "include_csv": true
+        }
+      ],
+      "notes": "Update this file to point at your project's package and directories."
+    }
+  ]
+}
