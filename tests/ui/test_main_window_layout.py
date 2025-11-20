@@ -35,12 +35,10 @@ class _StubArtifactManager:
 def _build_state(devices: Iterable[Device]) -> ApplicationState:
     config = CerebrusConfig(
         tool_paths=ToolPaths(),
-        profiles=[ProjectProfile(name="default", report_type="summary")],
         cache=CacheConfig(directory=Path(".cache")),
     )
     state = ApplicationState(config=config)
     state.set_devices(devices)
-    state.active_profile = config.profiles[0]
     return state
 
 

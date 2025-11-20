@@ -31,9 +31,6 @@ class CerebrusApp:
         self.state = ApplicationState(config=self.config)
         uaft = UAFTTool(binary=self.config.tool_paths.uaft)
         self.device_manager = DeviceManager(uaft=uaft)
-        self.profile_registry = ProfileRegistry(
-            profiles={profile.name: profile for profile in self.config.profiles}
-        )
         self.cache_manager = CacheManager(config=self.config.cache)
         project_store = ProjectStore(
             definition_file=self.config.project_paths.definition_file,

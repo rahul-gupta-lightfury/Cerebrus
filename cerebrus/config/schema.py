@@ -22,6 +22,5 @@ def validate(data: dict[str, Any]) -> None:
     if "tool_paths" not in data:
         raise SchemaError("'tool_paths' section is required")
 
-    profiles = data.get("profiles")
-    if not profiles:
-        raise SchemaError("At least one profile must be defined")
+    if not isinstance(data.get("tool_paths"), dict):
+        raise SchemaError("'tool_paths' must be a mapping")

@@ -43,18 +43,6 @@ def _coerce_path(value: str | Path | None) -> Path | None:
     return Path(value).expanduser()
 
 
-def _parse_profiles(raw_profiles: list[dict[str, Any]]) -> list[ProjectProfile]:
-    return [
-        ProjectProfile(
-            name=item["name"],
-            report_type=item["report_type"],
-            csv_filters=list(item.get("csv_filters", [])),
-            description=item.get("description", ""),
-        )
-        for item in raw_profiles
-    ]
-
-
 def load_config_from_file(path: Path) -> CerebrusConfig:
     if not path.exists():
         return defaults.build_default_config()

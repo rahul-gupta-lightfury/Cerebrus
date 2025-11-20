@@ -66,21 +66,16 @@ Adjust this layout as the project evolves, but keep documentation in sync.
 4. **Configure Unreal-Tool Paths**
 
    Update `config/cerebrus.yaml` so that it points to your Unreal Engine
-   installation binaries and declares at least one profiling profile:
+   installation binaries:
 
    ```yaml
    version: 1
    tool_paths:
-     uaft: E:/DonE/git/UE57/Engine/Binaries/Win64/UAFT.exe
-     csvtools_root: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools
-     perfreporttool: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
+     uaft: <UE_ROOT>/Engine/Binaries/Win64/UAFT.exe
+     csvtools_root: <UE_ROOT>/Engine/Binaries/DotNET/CsvTools
+     perfreporttool: <UE_ROOT>/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
    cache:
      directory: .cerebrus-cache
-   profiles:
-     - name: default
-       report_type: summary
-       csv_filters:
-         - stat=Unit
    ```
 
    The configuration loader validates this file on startup and injects defaults
