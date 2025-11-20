@@ -66,28 +66,49 @@ Adjust this layout as the project evolves, but keep documentation in sync.
 4. **Configure Unreal-Tool Paths**
 
    Update `config/cerebrus.yaml` so that it points to your Unreal Engine
-   installation binaries and declares at least one profiling profile:
+   installation binaries:
 
    ```yaml
    version: 1
    tool_paths:
-     uaft: E:/DonE/git/UE57/Engine/Binaries/Win64/UAFT.exe
-     csvtools_root: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools
-     perfreporttool: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
+     uaft: <UE_ROOT>/Engine/Binaries/Win64/UAFT.exe
+     csvtools_root: <UE_ROOT>/Engine/Binaries/DotNET/CsvTools
+     perfreporttool: <UE_ROOT>/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
    cache:
      directory: .cerebrus-cache
-   profiles:
-     - name: default
-       report_type: summary
-       csv_filters:
-         - stat=Unit
    ```
 
    The configuration loader validates this file on startup and injects defaults
    if the file is missing. Cerebrus wrappers consume the resolved paths rather
    than hardcoding anything.
 
-5. **Run the toolkit scaffold**
+5. **Describe project- and stream-specific paths**
+
+   Update `config/projects.json` to capture the stable Android directory
+   structure for each Unreal title you support. The file can be shared across
+   machines and tweaked without touching the Python code:
+
+   ```json
+   {
+     "projects": [
+       {
+         "company": "ExampleStudio",
+         "project": "SampleUnrealGame",
+         "package": "com.example.sample",
+         "device_root": "/sdcard/Android/data/com.example.sample/files",
+         "pc_root": "~/CerebrusCaptures/SampleUnrealGame",
+         "streams": [
+           {"name": "Default", "device_subdir": "Saved/Logs", "include_logs": true}
+         ]
+       }
+     ]
+   }
+   ```
+
+   Cerebrus caches overrides (for example, when changing the PC destination
+   folder) under the cache directory so the base JSON remains shareable.
+
+6. **Run the toolkit scaffold**
 
    `python -m cerebrus` now boots directly into the Dear PyGui dashboard. The
    viewport mirrors the provided screenshot: overview blocks along the top,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Iterable
 
 try:  # pragma: no cover - Dear PyGui is optional during tests
@@ -13,6 +14,7 @@ except Exception:  # noqa: BLE001 - environments without a GPU/display fall back
 from cerebrus.core.device_manager import DeviceManager
 from cerebrus.core.logging import get_logger
 from cerebrus.core.state import ApplicationState
+from cerebrus.core.artifacts import AndroidArtifactManager
 from cerebrus.ui.capture_panel import CapturePanel
 from cerebrus.ui.config_panel import ConfigPanel
 from cerebrus.ui.device_panel import DevicePanel
@@ -40,14 +42,20 @@ class CerebrusUI:
 
     state: ApplicationState
     device_manager: DeviceManager
+    artifact_manager: AndroidArtifactManager
 
     def __post_init__(self) -> None:
         self.device_panel = DevicePanel(device_manager=self.device_manager)
-        self.capture_panel = CapturePanel(state=self.state)
+        self.capture_panel = CapturePanel(
+            state=self.state, artifact_manager=self.artifact_manager
+        )
         self.report_panel = ReportPanel(state=self.state)
         self.config_panel = ConfigPanel(state=self.state)
         self._log_widget_tag = "cerebrus-live-log"
         self._viewport_size: tuple[int, int] = (1700, 980)
+        self._output_dir_field = "cerebrus-output-dir"
+        self._output_name_field = "cerebrus-output-name"
+        self._output_dialog_tag = "cerebrus-output-dialog"
 
     def render_once(self) -> None:
         LOGGER.info("Rendering UI scaffold")
@@ -72,8 +80,12 @@ class CerebrusUI:
         dpg.create_context()
         dpg.configure_app(docking=True, docking_space=True)
         self._build_viewport()
+        # Activate before setup/show to avoid a docking-only viewport and repeat after show
+        # because some Dear PyGui versions reset the primary window on first display.
+        self._activate_primary_window()
         dpg.setup_dearpygui()
         dpg.show_viewport()
+        self._activate_primary_window()
 
         try:
             while dpg.is_dearpygui_running():
@@ -89,7 +101,7 @@ class CerebrusUI:
             UILayoutSection(
                 title="Project + Session Overview",
                 rows=[
-                    f"Active profile: {self._active_profile_name()}",
+                    f"Active project: {self.state.active_project.project if self.state.active_project else 'Not set'}",
                     f"Cache: {self.state.cache_directory.resolve()}",
                     "Goal: Launch-to-insights bridge for Android perf workflows",
                     "Status blocks match the shared reference screenshot",
@@ -104,7 +116,7 @@ class CerebrusUI:
                 title="Capture Session & Descriptor Details",
                 rows=[
                     "Session Descriptor: Device | Build ID | Performance Target | Notes",
-                    "CSV filters and stat sets derive from the active profile",
+                    "CSV filters and stat sets will be defined per run",
                     "Actions: Capture Session, Stream Logs, Pull CSV",
                     "Dear PyGui widgets mirror the original capture controls",
                 ],
@@ -124,9 +136,6 @@ class CerebrusUI:
         for device in self.state.devices:
             yield f"{device.model} ({device.identifier}) — Android {device.android_version}"
 
-    def _active_profile_name(self) -> str:
-        return self.state.active_profile.name if self.state.active_profile else "default"
-
     # Dear PyGui helpers -------------------------------------------------
 
     def _build_viewport(self) -> None:
@@ -142,7 +151,42 @@ class CerebrusUI:
             no_resize=True,
         ):
             self._render_dashboard_body()
+
+    def _activate_primary_window(self) -> None:
+        """Ensure the root window becomes the active Dear PyGui viewport."""
+
+        if not dpg.does_item_exist("cerebrus_root"):
+            LOGGER.warning("Primary window tag missing; skipping activation")
+            return
         dpg.set_primary_window("cerebrus_root", True)
+
+    def _render_performance_controls(self) -> None:
+        """Render performance action controls with output path inputs."""
+
+        with dpg.group(horizontal=True):
+            dpg.add_button(label="Performance", callback=self._log_performance_trigger)
+            dpg.add_input_text(
+                tag=self._output_dir_field,
+                label="Output Directory",
+                default_value=str(self.state.output_directory or ""),
+                width=320,
+                readonly=True,
+            )
+            dpg.add_button(label="Browse Output Directory", callback=self._open_output_dialog)
+            dpg.add_input_text(
+                tag=self._output_name_field,
+                label="Output Name",
+                default_value=self.state.output_name,
+                width=200,
+            )
+
+        with dpg.file_dialog(
+            directory_selector=True,
+            show=False,
+            callback=self._set_output_directory,
+            tag=self._output_dialog_tag,
+        ):
+            dpg.add_file_extension("")
 
     def _render_dashboard_body(self) -> None:
         self._render_menu_bar()
@@ -158,15 +202,16 @@ class CerebrusUI:
             color=(200, 200, 200, 255),
         )
         dpg.add_text(
-            f"Profile: {self._active_profile_name()}",
+            f"Active project: {self.state.active_project.project if self.state.active_project else 'Not set'}",
             color=(160, 220, 255, 255),
             bullet=True,
         )
         dpg.add_text(
-            f"Profile Path: {self.state.profile_storage_path}",
+            f"Cache Path: {self.state.cache_directory.resolve()}",
             color=(160, 220, 255, 255),
             bullet=True,
         )
+        self._render_performance_controls()
         dpg.add_separator()
 
         sections = self._build_layout_sections()
@@ -208,6 +253,25 @@ class CerebrusUI:
                 height=160,
             )
 
+    def _open_output_dialog(self) -> None:
+        dpg.show_item(self._output_dialog_tag)
+
+    def _set_output_directory(self, sender: int, app_data: dict[str, str]) -> None:
+        selected = app_data.get("file_path_name")
+        if not selected:
+            return
+        self.state.output_directory = Path(selected)
+        dpg.set_value(self._output_dir_field, str(self.state.output_directory))
+        LOGGER.info("Output directory set to %s", self.state.output_directory)
+
+    def _log_performance_trigger(self) -> None:
+        self.state.output_name = dpg.get_value(self._output_name_field)
+        LOGGER.info(
+            "Performance action requested (dir=%s, name=%s)",
+            self.state.output_directory,
+            self.state.output_name,
+        )
+
     def _refresh_live_log(self) -> None:
         if not dpg.does_item_exist(self._log_widget_tag):
             return
@@ -227,7 +291,6 @@ class CerebrusUI:
                 [
                     ("New", None),
                     ("Open", None),
-                    ("Save Profiles", self._handle_save_profiles),
                 ],
             )
             self._menu_with_items(
@@ -244,7 +307,6 @@ class CerebrusUI:
                     ("Refresh Devices", self._refresh_devices),
                 ],
             )
-            self._render_profile_menu()
             self._menu_with_items(
                 "Settings",
                 [
@@ -266,32 +328,6 @@ class CerebrusUI:
         with dpg.menu(label=label):
             for entry_label, callback in entries:
                 dpg.add_menu_item(label=entry_label, callback=callback, enabled=callback is not None)
-
-    def _render_profile_menu(self) -> None:
-        with dpg.menu(label="Profile"):
-            dpg.add_menu_item(label=f"Active: {self._active_profile_name()}", enabled=False)
-            dpg.add_menu_item(label=f"Path: {self.state.profile_storage_path}", enabled=False)
-            dpg.add_separator()
-            for profile in self.state.config.profiles:
-                dpg.add_menu_item(
-                    label=profile.name,
-                    callback=lambda _, p=profile: self._set_active_profile(p),
-                )
-            dpg.add_separator()
-            dpg.add_menu_item(label="Save Profiles", callback=self._handle_save_profiles)
-
-    def _set_active_profile(self, profile: object) -> None:
-        try:
-            profile_name = profile.name  # type: ignore[attr-defined]
-        except Exception:
-            LOGGER.warning("Invalid profile selection: %s", profile)
-            return
-        self.state.active_profile = profile  # type: ignore[assignment]
-        LOGGER.info("Active profile set to %s", profile_name)
-
-    def _handle_save_profiles(self) -> None:
-        saved_path = self.state.save_profiles_to_json()
-        LOGGER.info("Profiles saved to %s", saved_path)
 
     def _log_tool_echo(self) -> None:
         LOGGER.info("Echo test command placeholder")

@@ -16,5 +16,7 @@ class ConfigPanel:
 
     def render(self) -> None:
         LOGGER.info(
-            "Config panel exposing %d profiles", len(self.state.config.profiles)
+            "Config panel ready (tool paths: uaft=%s, csvtools=%s)",
+            self.state.config.tool_paths.uaft,
+            self.state.config.tool_paths.csvtools_root,
         )

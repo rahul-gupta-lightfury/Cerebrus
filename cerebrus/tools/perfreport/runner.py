@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from cerebrus.config.models import ProjectProfile
 from cerebrus.tools.base import ToolResult, run_tool
 
 
@@ -32,12 +31,3 @@ class PerfReportRunner:
         ]
         return run_tool(self.binary, args)
 
-    def from_profile(
-        self, input_path: Path, output_dir: Path, profile: ProjectProfile
-    ) -> ToolResult:
-        spec = PerfReportSpec(
-            input_path=input_path,
-            output_dir=output_dir,
-            report_type=profile.report_type,
-        )
-        return self.run(spec)

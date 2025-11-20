@@ -9,5 +9,5 @@ from cerebrus.config.loader import load_config_from_file
 def test_load_config_from_missing_file(tmp_path: Path) -> None:
     missing = tmp_path / "missing.yaml"
     config = load_config_from_file(missing)
-    assert config.profiles and config.profiles[0].name == defaults.DEFAULT_PROFILE.name
     assert config.cache.directory == defaults.DEFAULT_CACHE.directory
+    assert config.project_paths.definition_file == defaults.DEFAULT_PROJECT_PATHS.definition_file
