@@ -27,6 +27,7 @@ from cerebrus.config import defaults
 from cerebrus.config.models import (
     CacheConfig,
     CerebrusConfig,
+    ProjectPathsConfig,
     ProjectProfile,
     ToolPaths,
 )
@@ -90,9 +91,24 @@ def load_config_from_file(path: Path) -> CerebrusConfig:
         max_entries=cache_data.get("max_entries", defaults.DEFAULT_CACHE.max_entries),
     )
 
+    project_paths_data = data.get("project_paths", {})
+    project_paths = ProjectPathsConfig(
+        definition_file=(
+            _coerce_path(project_paths_data.get("definition_file"))
+            or defaults.DEFAULT_PROJECT_PATHS.definition_file
+        ),
+        cache_file=_coerce_path(project_paths_data.get("cache_file"))
+        or defaults.DEFAULT_PROJECT_PATHS.cache_file,
+    )
+
     profiles = _parse_profiles(data["profiles"])
 
-    return CerebrusConfig(tool_paths=tool_paths, profiles=profiles, cache=cache)
+    return CerebrusConfig(
+        tool_paths=tool_paths,
+        profiles=profiles,
+        cache=cache,
+        project_paths=project_paths,
+    )
 
 
 __all__ = ["load_config_from_file", "SchemaError"]

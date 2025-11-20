@@ -8,7 +8,12 @@ from typing import Iterable
 
 import json
 
-from cerebrus.config.models import CerebrusConfig, ProjectProfile
+from cerebrus.config.models import (
+    CerebrusConfig,
+    ProjectDefinition,
+    ProjectProfile,
+    ProjectStream,
+)
 from cerebrus.core.log_buffer import LiveLogBuffer
 
 
@@ -28,6 +33,10 @@ class ApplicationState:
     config: CerebrusConfig
     devices: list[Device] = field(default_factory=list)
     active_profile: ProjectProfile | None = None
+    projects: list[ProjectDefinition] = field(default_factory=list)
+    active_project: ProjectDefinition | None = None
+    active_stream: ProjectStream | None = None
+    capture_filter: str = ""
     log_buffer: LiveLogBuffer = field(default_factory=LiveLogBuffer)
     profile_storage_path: Path = field(init=False)
 
@@ -36,6 +45,12 @@ class ApplicationState:
 
     def set_devices(self, devices: Iterable[Device]) -> None:
         self.devices = list(devices)
+
+    def set_projects(self, projects: Iterable[ProjectDefinition]) -> None:
+        self.projects = list(projects)
+        self.active_project = self.projects[0] if self.projects else None
+        if self.active_project and self.active_project.streams:
+            self.active_stream = self.active_project.streams[0]
 
     @property
     def cache_directory(self) -> Path:
