@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Callable, Iterable
 
 try:  # pragma: no cover - Dear PyGui is optional during tests
     import dearpygui.dearpygui as dpg
@@ -47,6 +47,7 @@ class CerebrusUI:
         self.report_panel = ReportPanel(state=self.state)
         self.config_panel = ConfigPanel(state=self.state)
         self._log_widget_tag = "cerebrus-live-log"
+        self._viewport_size: tuple[int, int] = (1700, 980)
 
     def render_once(self) -> None:
         LOGGER.info("Rendering UI scaffold")
@@ -69,6 +70,7 @@ class CerebrusUI:
             return
 
         dpg.create_context()
+        dpg.configure_app(docking=True, docking_space=True)
         self._build_viewport()
         dpg.setup_dearpygui()
         dpg.show_viewport()
@@ -128,7 +130,8 @@ class CerebrusUI:
     # Dear PyGui helpers -------------------------------------------------
 
     def _build_viewport(self) -> None:
-        width, height = 1700, 980
+        width, height = self._compute_viewport_size()
+        self._viewport_size = (width, height)
         dpg.create_viewport(title="Cerebrus Toolkit Dashboard", width=width, height=height)
         with dpg.window(
             tag="cerebrus_root",
@@ -142,6 +145,9 @@ class CerebrusUI:
         dpg.set_primary_window("cerebrus_root", True)
 
     def _render_dashboard_body(self) -> None:
+        self._render_menu_bar()
+        dpg.add_spacer(height=6)
+
         dpg.add_text(
             "Cerebrus: Real-time Profiling Toolkit",
             color=(173, 216, 230, 255),
@@ -151,6 +157,16 @@ class CerebrusUI:
             "Python Dear PyGui scaffold that mirrors the reference screenshot layout",
             color=(200, 200, 200, 255),
         )
+        dpg.add_text(
+            f"Profile: {self._active_profile_name()}",
+            color=(160, 220, 255, 255),
+            bullet=True,
+        )
+        dpg.add_text(
+            f"Profile Path: {self.state.profile_storage_path}",
+            color=(160, 220, 255, 255),
+            bullet=True,
+        )
         dpg.add_separator()
 
         sections = self._build_layout_sections()
@@ -158,8 +174,9 @@ class CerebrusUI:
         left, right = sections[:midpoint], sections[midpoint:]
 
         with dpg.group(horizontal=True):
-            self._render_section_column(left, width=800)
-            self._render_section_column(right, width=800)
+            left_width, right_width = self._column_widths()
+            self._render_section_column(left, width=left_width)
+            self._render_section_column(right, width=right_width)
 
         dpg.add_separator()
         self._render_log_console()
@@ -200,3 +217,126 @@ class CerebrusUI:
         if not self.state.log_buffer:
             return "Live log buffer not initialized"
         return self.state.log_buffer.joined() or "(Log output will appear here)"
+
+    # Menu helpers -------------------------------------------------------
+
+    def _render_menu_bar(self) -> None:
+        with dpg.menu_bar():
+            self._menu_with_items(
+                "File",
+                [
+                    ("New", None),
+                    ("Open", None),
+                    ("Save Profiles", self._handle_save_profiles),
+                ],
+            )
+            self._menu_with_items(
+                "View",
+                [
+                    ("Reset Layout", None),
+                    ("Toggle Docking", self._toggle_docking),
+                ],
+            )
+            self._menu_with_items(
+                "Tools",
+                [
+                    ("Echo Test Command", self._log_tool_echo),
+                    ("Refresh Devices", self._refresh_devices),
+                ],
+            )
+            self._render_profile_menu()
+            self._menu_with_items(
+                "Settings",
+                [
+                    ("Load Theme...", None),
+                    ("Log Colors", None),
+                    ("Key Bindings", None),
+                ],
+            )
+            self._menu_with_items(
+                "Help",
+                [
+                    ("Help", None),
+                    ("Provide Feedback", None),
+                    ("About", self._log_about),
+                ],
+            )
+
+    def _menu_with_items(self, label: str, entries: list[tuple[str, Callable | None]]) -> None:
+        with dpg.menu(label=label):
+            for entry_label, callback in entries:
+                dpg.add_menu_item(label=entry_label, callback=callback, enabled=callback is not None)
+
+    def _render_profile_menu(self) -> None:
+        with dpg.menu(label="Profile"):
+            dpg.add_menu_item(label=f"Active: {self._active_profile_name()}", enabled=False)
+            dpg.add_menu_item(label=f"Path: {self.state.profile_storage_path}", enabled=False)
+            dpg.add_separator()
+            for profile in self.state.config.profiles:
+                dpg.add_menu_item(
+                    label=profile.name,
+                    callback=lambda _, p=profile: self._set_active_profile(p),
+                )
+            dpg.add_separator()
+            dpg.add_menu_item(label="Save Profiles", callback=self._handle_save_profiles)
+
+    def _set_active_profile(self, profile: object) -> None:
+        try:
+            profile_name = profile.name  # type: ignore[attr-defined]
+        except Exception:
+            LOGGER.warning("Invalid profile selection: %s", profile)
+            return
+        self.state.active_profile = profile  # type: ignore[assignment]
+        LOGGER.info("Active profile set to %s", profile_name)
+
+    def _handle_save_profiles(self) -> None:
+        saved_path = self.state.save_profiles_to_json()
+        LOGGER.info("Profiles saved to %s", saved_path)
+
+    def _log_tool_echo(self) -> None:
+        LOGGER.info("Echo test command placeholder")
+
+    def _refresh_devices(self) -> None:
+        refreshed = self.device_manager.refresh()
+        self.state.set_devices(refreshed)
+        LOGGER.info("Device list refreshed (%d device(s))", len(refreshed))
+
+    def _toggle_docking(self) -> None:
+        try:
+            current = dpg.get_app_configuration().get("docking")
+        except Exception:
+            current = True
+        dpg.configure_app(docking=not bool(current), docking_space=True)
+        LOGGER.info("Docking toggled to %s", not bool(current))
+
+    def _log_about(self) -> None:
+        LOGGER.info("Cerebrus Dear PyGui scaffold — version preview")
+
+    # Layout utilities ---------------------------------------------------
+
+    def _compute_viewport_size(self) -> tuple[int, int]:
+        """Clamp the viewport to the monitor resolution to avoid overflow."""
+
+        desired_width, desired_height = 1700, 980
+        try:
+            monitor = dpg.get_primary_monitor()
+        except Exception:  # pragma: no cover - depends on Dear PyGui environment
+            monitor = None
+
+        if not monitor:
+            return desired_width, desired_height
+
+        work_size = monitor.get("work_size") or monitor.get("size")
+        if not work_size:
+            return desired_width, desired_height
+
+        max_width, max_height = work_size
+        padding_width, padding_height = 40, 80
+        width = min(desired_width, max_width - padding_width)
+        height = min(desired_height, max_height - padding_height)
+        return max(width, 640), max(height, 480)
+
+    def _column_widths(self) -> tuple[int, int]:
+        total_available = max(self._viewport_size[0] - 80, 640)
+        column_width = max(total_available // 2, 320)
+        return column_width, column_width
