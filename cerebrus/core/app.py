@@ -12,6 +12,7 @@ from cerebrus.core.device_manager import DeviceManager
 from cerebrus.core.log_buffer import LiveLogHandler
 from cerebrus.core.logging import get_logger
 from cerebrus.core.projects import ProjectRegistry
+from cerebrus.core.profiles import ProfileRegistry
 from cerebrus.core.state import ApplicationState
 from cerebrus.core.artifacts import AndroidArtifactManager
 from cerebrus.tools.uaft import UAFTTool
@@ -56,6 +57,7 @@ class CerebrusApp:
         devices = self.device_manager.refresh()
         self.state.set_devices(devices)
         self.state.set_projects(self.project_registry.list_projects())
+        self.state.active_profile = self.profile_registry.list_profiles()[0]
 
     def run(self) -> None:
         LOGGER.info("Running Cerebrus UI stub")

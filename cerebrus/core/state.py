@@ -6,7 +6,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
-from cerebrus.config.models import CerebrusConfig, ProjectDefinition, ProjectStream
+import json
+
+from cerebrus.config.models import (
+    CerebrusConfig,
+    ProjectDefinition,
+    ProjectProfile,
+    ProjectStream,
+)
 from cerebrus.core.log_buffer import LiveLogBuffer
 
 
@@ -25,6 +32,7 @@ class ApplicationState:
 
     config: CerebrusConfig
     devices: list[Device] = field(default_factory=list)
+    active_profile: ProjectProfile | None = None
     projects: list[ProjectDefinition] = field(default_factory=list)
     active_project: ProjectDefinition | None = None
     active_stream: ProjectStream | None = None

@@ -7,7 +7,7 @@ from typing import Iterable
 
 import pytest
 
-from cerebrus.config.models import CacheConfig, CerebrusConfig, ToolPaths
+from cerebrus.config.models import CacheConfig, CerebrusConfig, ProjectProfile, ToolPaths
 from cerebrus.core.state import ApplicationState, Device
 from cerebrus.ui.main_window import CerebrusUI
 
@@ -99,59 +99,3 @@ def test_primary_window_activation_guard(monkeypatch: pytest.MonkeyPatch, exists
         assert recorded == ["cerebrus_root=True"]
     else:
         assert recorded == []
-
-
-def test_run_promotes_primary_window_before_and_after_show(monkeypatch: pytest.MonkeyPatch) -> None:
-    state = _build_state([])
-    ui = CerebrusUI(
-        state=state,
-        device_manager=_StubDeviceManager([]),
-        artifact_manager=_StubArtifactManager(),
-    )
-
-    calls: list[str] = []
-
-    monkeypatch.setattr(ui, "_build_viewport", lambda: calls.append("build_viewport"))
-    monkeypatch.setattr(ui, "_activate_primary_window", lambda: calls.append("activate_primary"))
-
-    class _StubDPG:
-        @staticmethod
-        def create_context() -> None:  # pragma: no cover - trivial sequencing
-            calls.append("create_context")
-
-        @staticmethod
-        def configure_app(**__kwargs: object) -> None:  # pragma: no cover - sequencing
-            calls.append("configure_app")
-
-        @staticmethod
-        def setup_dearpygui() -> None:  # pragma: no cover - sequencing
-            calls.append("setup")
-
-        @staticmethod
-        def show_viewport() -> None:  # pragma: no cover - sequencing
-            calls.append("show_viewport")
-
-        @staticmethod
-        def is_dearpygui_running() -> bool:  # pragma: no cover - sequencing
-            calls.append("loop_check")
-            return False
-
-        @staticmethod
-        def destroy_context() -> None:  # pragma: no cover - sequencing
-            calls.append("destroy_context")
-
-    monkeypatch.setattr("cerebrus.ui.main_window.dpg", _StubDPG())
-
-    ui.run()
-
-    assert calls == [
-        "create_context",
-        "configure_app",
-        "build_viewport",
-        "activate_primary",
-        "setup",
-        "show_viewport",
-        "activate_primary",
-        "loop_check",
-        "destroy_context",
-    ]

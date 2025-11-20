@@ -5,6 +5,7 @@ from .models import (
     CerebrusConfig,
     ProjectDefinition,
     ProjectPathsConfig,
+    ProjectProfile,
     ProjectStream,
     ToolPaths,
 )
@@ -15,6 +16,7 @@ __all__ = [
     "CerebrusConfig",
     "ProjectDefinition",
     "ProjectPathsConfig",
+    "ProjectProfile",
     "ProjectStream",
     "ProjectStore",
     "ToolPaths",

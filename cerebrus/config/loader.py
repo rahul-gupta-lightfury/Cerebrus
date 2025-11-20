@@ -24,7 +24,13 @@ else:
     yaml = _YamlShim()  # type: ignore[assignment]
 
 from cerebrus.config import defaults
-from cerebrus.config.models import CacheConfig, CerebrusConfig, ProjectPathsConfig, ToolPaths
+from cerebrus.config.models import (
+    CacheConfig,
+    CerebrusConfig,
+    ProjectPathsConfig,
+    ProjectProfile,
+    ToolPaths,
+)
 from cerebrus.config.schema import SchemaError, validate
 
 
@@ -83,8 +89,11 @@ def load_config_from_file(path: Path) -> CerebrusConfig:
         or defaults.DEFAULT_PROJECT_PATHS.cache_file,
     )
 
+    profiles = _parse_profiles(data["profiles"])
+
     return CerebrusConfig(
         tool_paths=tool_paths,
+        profiles=profiles,
         cache=cache,
         project_paths=project_paths,
     )
