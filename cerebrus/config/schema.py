@@ -24,3 +24,9 @@ def validate(data: dict[str, Any]) -> None:
 
     if not isinstance(data.get("tool_paths"), dict):
         raise SchemaError("'tool_paths' must be a mapping")
+
+    profiles = data.get("profiles")
+    if profiles is None:
+        raise SchemaError("'profiles' section is required")
+    if not isinstance(profiles, list):
+        raise SchemaError("'profiles' must be a list")
