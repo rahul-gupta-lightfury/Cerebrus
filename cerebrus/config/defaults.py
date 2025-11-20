@@ -7,6 +7,7 @@ from pathlib import Path
 from cerebrus.config.models import (
     CacheConfig,
     CerebrusConfig,
+    ProjectPathsConfig,
     ProjectProfile,
     ToolPaths,
 )
@@ -20,6 +21,7 @@ DEFAULT_PROFILE = ProjectProfile(
 )
 DEFAULT_TOOL_PATHS = ToolPaths()
 DEFAULT_CACHE = CacheConfig()
+DEFAULT_PROJECT_PATHS = ProjectPathsConfig()
 
 
 def build_default_config() -> CerebrusConfig:
@@ -40,5 +42,9 @@ def build_default_config() -> CerebrusConfig:
         cache=CacheConfig(
             directory=DEFAULT_CACHE.directory,
             max_entries=DEFAULT_CACHE.max_entries,
+        ),
+        project_paths=ProjectPathsConfig(
+            definition_file=DEFAULT_PROJECT_PATHS.definition_file,
+            cache_file=DEFAULT_PROJECT_PATHS.cache_file,
         ),
     )

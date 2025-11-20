@@ -18,6 +18,18 @@ class _StubDeviceManager:
         return list(self._devices)
 
 
+class _StubArtifactManager:
+    class _StubListing:
+        logs: list[str] = []
+        profiles: list[str] = []
+
+        def filtered(self, *_):
+            return self
+
+    def list_artifacts(self, *_, **__):  # pragma: no cover - logging only
+        return self._StubListing()
+
+
 def _build_state(devices: Iterable[Device]) -> ApplicationState:
     config = CerebrusConfig(
         tool_paths=ToolPaths(),
@@ -33,7 +45,11 @@ def _build_state(devices: Iterable[Device]) -> ApplicationState:
 def test_layout_sections_match_reference_language() -> None:
     devices = [Device(identifier="FAKE123", model="Pixel 8", android_version="14")]
     state = _build_state(devices)
-    ui = CerebrusUI(state=state, device_manager=_StubDeviceManager(devices))
+    ui = CerebrusUI(
+        state=state,
+        device_manager=_StubDeviceManager(devices),
+        artifact_manager=_StubArtifactManager(),
+    )
 
     sections = ui._build_layout_sections()
     titles = [section.title for section in sections]
@@ -46,6 +62,10 @@ def test_layout_sections_match_reference_language() -> None:
 def test_log_contents_uses_live_buffer() -> None:
     state = _build_state([])
     state.log_buffer.append("boot complete")
-    ui = CerebrusUI(state=state, device_manager=_StubDeviceManager([]))
+    ui = CerebrusUI(
+        state=state,
+        device_manager=_StubDeviceManager([]),
+        artifact_manager=_StubArtifactManager(),
+    )
 
     assert "boot complete" in ui._log_contents()
