@@ -21,5 +21,8 @@ jobs:
         with:
           submodules: true
 
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
       - name: Build Debug
         run: msbuild CerebrusImGuiApp.sln /p:Configuration=Debug /p:Platform=x64

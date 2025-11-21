@@ -178,7 +178,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
         ImGui::NewFrame();
 
         // Fill the viewport with a docking space so additional windows can be rearranged.
-        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+        ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+        ImGui::DockSpaceOverViewport(mainViewport->ID, mainViewport);
 
         menuBar.Render();
         perfReportWindow.Render(io);
