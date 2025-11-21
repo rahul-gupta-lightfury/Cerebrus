@@ -12,28 +12,14 @@ permissions:
 
 jobs:
   lint:
-    name: Static Analysis
+    name: Static Build Validation
     runs-on: windows-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          submodules: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run Black
-        run: black --check .
-
-      - name: Run isort
-        run: isort --check-only .
-
-      - name: Run mypy
-        run: mypy .
+      - name: Build Debug (warnings as errors)
+        run: msbuild CerebrusImGuiApp.sln /t:Rebuild /p:Configuration=Debug /p:Platform=x64 /p:TreatWarningsAsErrors=true

@@ -1,122 +1,31 @@
 # Project Cerebrus Architecture Overview
 
-This document describes the high-level architecture of Cerebrus. All implementation work—human and Codex—must align with these boundaries.
+Cerebrus is currently a native Windows Dear ImGui harness (Win32 + DirectX11) focused on Unreal Engine perf-report workflows. The codebase is C++-only and built with Visual Studio 2022—no Python runtime or CMake glue.
 
-## Top-Level Modules
+## Top-level components
 
-- `cerebrus.core`
-  - Application lifecycle and orchestration.
-  - Device discovery and workload management.
-  - Project configuration and profile definitions.
-- `cerebrus.ui`
-  - Dear PyGui-based UI.
-  - Panels for devices, captures, reports, and configuration.
-  - Error and notification surfaces.
-- `cerebrus.tools`
-  - Thin, testable wrappers around external tools:
-    - UAFT (Unreal Android File Tool)
-    - CsvTools:
-      - CSVCollate
-      - CsvConvert
-      - CSVFilter
-      - CSVSplit
-      - CsvToSVG
-      - csvinfo
-    - PerfReportTool
-- `cerebrus.config`
-  - Loading, validating, and persisting project configuration.
-  - Tool-path configuration and per-project overrides.
-- `cerebrus.cache`
-  - Per-project cache management.
-  - Summary table caches, temporary CSV/PRC processing outputs.
-- `cerebrus.installers`
-  - Windows-only one-click installer logic.
-  - Environment validation: Python, ADB, Unreal tool presence.
+- `CerebrusImGuiApp.sln` — Root solution file for Visual Studio 2022.
+- `cerebrus/ui/imgui_app/` — C++ sources, project file, and filters for the ImGui harness.
+- `cerebrus/thirdparty/imgui/` — Dear ImGui submodule (docking branch).
+- `docs/` — Setup and developer documentation.
 
-## Cross-Cutting Concerns
+## ImGui harness responsibilities
 
-- **Logging**
-  - Central logging abstraction.
-  - Clear separation between user-facing messages and diagnostic logs.
-- **Error Handling**
-  - Fail fast on configuration errors.
-  - Graceful degradation and user-visible messages for missing external tools.
-- **Configuration**
-  - JSON or YAML-based configuration for:
-    - Tool paths
-    - Device profiles
-    - Report types and CSV filters
-  - No hardcoded developer-specific paths.
-- **Profiles**
-  - Named profiles for types of workloads (e.g. flythrough, playthrough, playthroughmemory).
-  - Profiles map to:
-    - PerfReportTool `-reportType` values.
-    - CSV stat filters and thresholds.
-    - Device and build metadata expectations.
+- Render a single-window UI titled **Cerebrus Perf Report Prototype**.
+- Accept:
+  - Input path to CSV/PRC artifacts.
+  - Output directory and file name.
+- Provide a **Generate Perf Report** action (currently placeholder status updates).
+- Maintain the established ImGui folder structure so third-party updates remain isolated.
 
-## External Tools Integration
+## External tool expectations
 
-### UAFT
+Perf report generation ultimately relies on Unreal Engine tooling (e.g., PerfReportTool, CsvTools). While the current harness is UI-first, command launchers should stay modular so these tools can be integrated without disturbing the rendering or Win32/DirectX plumbing.
 
-- Responsible for communicating with Android devices and retrieving artifacts (logs, CSVs, PRCs, Insights captures).
-- Cerebrus should:
-  - Encapsulate UAFT usage in `cerebrus.tools.uaft`.
-  - Provide high-level operations like:
-    - `pull_logcat(device, output_dir)`
-    - `pull_csv_profiles(device, project_profile, output_dir)`
+## Build and validation boundaries
 
-### CsvTools
+- Visual Studio 2022 x64 configurations (Debug/Release) are the supported entry points.
+- The solution references the Dear ImGui submodule directly; no additional project generators are involved.
+- Keep codepaths Windows-only until a cross-platform renderer is explicitly added.
 
-- Wrap CsvTools utilities in dedicated modules:
-  - `cerebrus.tools.csv.collate` → CSVCollate
-  - `cerebrus.tools.csv.convert` → CsvConvert
-  - `cerebrus.tools.csv.filter` → CSVFilter
-  - `cerebrus.tools.csv.split` → CSVSplit
-  - `cerebrus.tools.csv.svg` → CsvToSVG
-  - `cerebrus.tools.csv.info` → csvinfo
-- Each wrapper should:
-  - Accept high-level parameters (paths, stat names, thresholds) rather than raw CLI strings.
-  - Assemble the appropriate command line.
-  - Execute the process and capture stdout/stderr and exit status.
-  - Surface structured results to callers (e.g. output paths, basic parsed info).
-
-### PerfReportTool
-
-- Encapsulate all PerfReportTool usage under `cerebrus.tools.perfreport`.
-- Support:
-  - Single CSV/PRC report generation.
-  - Bulk directory processing with optional recursion and metadata filters.
-  - Summary table and JSON export flows.
-
-## UI Layer
-
-- Use Dear PyGui panels for:
-  - Device list and selection.
-  - Capture orchestration.
-  - Report generation and browsing.
-  - Configuration editing (tool paths, profiles, cache settings).
-- Follow immediate-mode patterns:
-  - Read current state, draw, then apply mutations explicitly.
-- Keep business logic in `core` and `tools`; the UI calls into those modules.
-
-## Installer and Environment Validation
-
-- One-click Windows installer should:
-  - Bundle Python and required packages.
-  - Detect presence of ADB and Unreal Engine tools.
-  - Configure environment variables or config files accordingly.
-  - Avoid admin elevation unless strictly necessary.
-
-- Environment checks:
-  - Python version compatibility.
-  - Access to UAFT, CsvTools, PerfReportTool binaries.
-  - Write access to cache and report directories.
-
-## Extensibility Guidelines
-
-- When adding new capabilities:
-  - First update this document to define the new module or boundary.
-  - Then implement minimal, coherent slices of functionality.
-  - Add tests and documentation for any new external tool integrations.
-
-Keep this overview up to date as the project evolves.
+Update this document whenever new modules or integration points are introduced.

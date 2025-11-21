@@ -12,22 +12,14 @@ permissions:
 
 jobs:
   unit-tests:
-    name: Pytest Suite
+    name: Smoke Build
     runs-on: windows-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          submodules: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run pytest
-        run: pytest
+      - name: Build Debug
+        run: msbuild CerebrusImGuiApp.sln /p:Configuration=Debug /p:Platform=x64
