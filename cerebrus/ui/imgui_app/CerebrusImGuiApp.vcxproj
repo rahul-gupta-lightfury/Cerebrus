@@ -80,7 +80,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Main.cpp" />
+    <ClCompile Include="src\MenuBar.cpp" />
+    <ClCompile Include="src\PerfReportWindow.cpp" />
+    <ClCompile Include="src\Theme.cpp" />
     <ClCompile Include="..\..\thirdparty\imgui\backends\imgui_impl_dx11.cpp" />
     <ClCompile Include="..\..\thirdparty\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="..\..\thirdparty\imgui\imgui.cpp" />
@@ -90,6 +93,9 @@
     <ClCompile Include="..\..\thirdparty\imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\MenuBar.h" />
+    <ClInclude Include="src\PerfReportWindow.h" />
+    <ClInclude Include="src\Theme.h" />
     <ClInclude Include="..\..\thirdparty\imgui\imconfig.h" />
     <ClInclude Include="..\..\thirdparty\imgui\imgui.h" />
     <ClInclude Include="..\..\thirdparty\imgui\imgui_internal.h" />

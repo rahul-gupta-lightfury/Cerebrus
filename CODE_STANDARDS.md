@@ -10,6 +10,24 @@ This document defines the baseline coding standards for all Python and configura
 - OS:
   - Windows 10 or newer (64-bit).
 
+## C++ (Dear ImGui app)
+
+- Target: C++17 for the Dear ImGui Win32/DX11 sample in `cerebrus/ui/imgui_app`.
+- File naming: use PascalCase/AllmanCase for translation units and headers (e.g., `Main.cpp`, `PerfReportWindow.h`).
+- Formatting and structure:
+  - Allman style braces: open braces on their own line for classes, methods, functions, and control statements.
+  - Avoid namespaces in the ImGui layer to keep linkage simple.
+  - Keep functions small and focused on a single responsibility.
+- Naming:
+  - Data members use camel case with an `m_` prefix (e.g., `m_InputPath`, `m_RequestSubmitted`).
+  - Prefer descriptive method names such as `RenderMenuBar`, `ApplyDarkGreen`, or `QueueRequest`.
+- Dependencies and includes:
+  - Include only what you use; keep headers minimal and prefer forward declarations when practical.
+  - Never wrap `#include` directives in `try/catch` blocks.
+- ImGui specifics:
+  - Configure docking explicitly via `ImGuiIO::ConfigFlags` and maintain a viewport-level dockspace in the main frame.
+  - Centralize style/theming changes in a dedicated helper (e.g., `Theme::ApplyDarkGreen`).
+
 ## General Principles
 
 - Prefer **clarity over cleverness**.
