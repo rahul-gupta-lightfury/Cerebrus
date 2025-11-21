@@ -257,6 +257,10 @@ python_env/
 *.opensdf
 *.psess
 *.vsp
+# C++ Dear ImGui bootstrap artifacts we keep in source control
+!CerebrusImGuiApp.sln
+!cerebrus/ui/imgui_app/CerebrusImGuiApp.vcxproj
+!cerebrus/ui/imgui_app/CerebrusImGuiApp.vcxproj.filters
 
 ###############################################
 # Logs & Diagnostics

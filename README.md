@@ -1,160 +1,54 @@
 # Project Cerebrus
 
-Python-based Windows-only toolkit with a Dear PyGui UI (Python bindings for Dear ImGui) for managing Unreal Engine Android profiling workflows.
+Native Windows toolkit built around a C++ Dear ImGui interface (Win32 + DirectX11) for driving Unreal Engine profiling workflows. The current bootstrap focuses on PerfReport generation with a simple window that captures input/output paths and emits a placeholder request status.
 
-Cerebrus orchestrates:
-- Device discovery and Android workload management.
-- Retrieval of logcat logs, CSV profiling data, and Insights captures.
-- Per-project configuration and caching.
-- CSV- and PerfReport-based reporting flows using Unreal Engine's CsvTools and PerfReportTool.
-- Theme configuration and a stable one-click installer.
+Cerebrus targets:
+- Deterministic, repeatable profiling on Windows.
+- A lightweight, C++-only UI with no CMake dependency.
+- Direct references to the Dear ImGui submodule under `cerebrus/thirdparty/imgui`.
 
-> Note: This repository assumes you already have Unreal Engine binaries available for:
-> - UAFT (Unreal Android File Tool)
-> - CsvTools (CSVCollate, CsvConvert, CSVFilter, CSVSplit, CsvToSVG, csvinfo)
-> - PerfReportTool
-
-## Goals
-
-- Deterministic, repeatable profiling workflows for Android targets.
-- Clear separation of architecture, tooling wrappers, and UI.
-- Codex-friendly structure and documentation.
-- No hidden behavior: all automation is scripted and documented.
-
-## Repository Layout (expected)
-
-This scaffold assumes a layout similar to:
+## Repository layout
 
 ```text
-/cerebrus/                # Core Python packages
-  core/                   # Core orchestration logic and abstractions
-  ui/                     # Dear PyGui UI and layout logic
-  tools/                  # Wrappers around UAFT, CsvTools, PerfReportTool
-  config/                 # Configuration and profile definitions
-  cache/                  # Per-project cache management
-  installers/             # One-click installer logic and metadata
-/docs/                    # User + developer documentation
-/tests/                   # Automated tests (unit + integration)
+CerebrusImGuiApp.sln          # Visual Studio 2022 solution rooted at the repo top-level
+cerebrus/ui/imgui_app/        # C++ sources and Visual Studio project
+cerebrus/thirdparty/imgui/    # Dear ImGui submodule (docking branch)
+docs/                         # Developer and setup documentation
 ```
 
-Adjust this layout as the project evolves, but keep documentation in sync.
+## Getting started (Visual Studio 2022, no CMake)
 
-## Getting Started (Developers)
+1. Clone the repository and pull submodules:
 
-1. **Clone the repository**
-
-   ```bash
-   git clone <REPO_URL> cerebrus
-   cd cerebrus
+   ```powershell
+   git clone <REPO_URL> Cerebrus
+   cd Cerebrus
+   git submodule update --init --recursive
    ```
 
-2. **Create and activate a virtual environment (Windows)**
+2. Open `CerebrusImGuiApp.sln` in Visual Studio 2022.
+3. Select the **x64** platform and either **Debug** or **Release** configuration.
+4. Build → Build Solution.
+5. Run the executable from `cerebrus/ui/imgui_app/x64/<Configuration>/CerebrusImGuiApp.exe`.
 
-   ```bash
-   py -3 -m venv .venv
-   .venv\Scripts\activate
-   ```
+You should see the **Cerebrus Perf Report Prototype** window with:
+- Input path field (CSV/PRC).
+- Output directory field.
+- Output file name field (`report.prt` by default).
+- **Generate Perf Report** button updating a status line.
 
-3. **Install Python dependencies**
+## Building from the Developer Command Prompt
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+From the *x64 Native Tools Command Prompt for VS 2022*:
 
-   Keep `requirements.txt` minimal and reproducible. Prefer exact versions for tooling that affects profiling reports.
+```batch
+msbuild CerebrusImGuiApp.sln /p:Configuration=Debug /p:Platform=x64 /p:TreatWarningsAsErrors=true
+```
 
-4. **Configure Unreal-Tool Paths**
+Adjust the Visual Studio edition path if `msbuild` is not on your `PATH`.
 
-   Update `config/cerebrus.yaml` so that it points to your Unreal Engine
-   installation binaries:
+## Working with Codex
 
-   ```yaml
-   version: 1
-   tool_paths:
-     uaft: <UE_ROOT>/Engine/Binaries/Win64/UAFT.exe
-     csvtools_root: <UE_ROOT>/Engine/Binaries/DotNET/CsvTools
-     perfreporttool: <UE_ROOT>/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
-   cache:
-     directory: .cerebrus-cache
-   ```
-
-   The configuration loader validates this file on startup and injects defaults
-   if the file is missing. Cerebrus wrappers consume the resolved paths rather
-   than hardcoding anything.
-
-5. **Describe project- and stream-specific paths**
-
-   Update `config/projects.json` to capture the stable Android directory
-   structure for each Unreal title you support. The file can be shared across
-   machines and tweaked without touching the Python code:
-
-   ```json
-   {
-     "projects": [
-       {
-         "company": "ExampleStudio",
-         "project": "SampleUnrealGame",
-         "package": "com.example.sample",
-         "device_root": "/sdcard/Android/data/com.example.sample/files",
-         "pc_root": "~/CerebrusCaptures/SampleUnrealGame",
-         "streams": [
-           {"name": "Default", "device_subdir": "Saved/Logs", "include_logs": true}
-         ]
-       }
-     ]
-   }
-   ```
-
-   Cerebrus caches overrides (for example, when changing the PC destination
-   folder) under the cache directory so the base JSON remains shareable.
-
-6. **Run the toolkit scaffold**
-
-   `python -m cerebrus` now boots directly into the Dear PyGui dashboard. The
-   viewport mirrors the provided screenshot: overview blocks along the top,
-   capture/report columns through the middle, and a live log console stitched
-   across the bottom.
-
-   ```bash
-   python -m cerebrus
-   ```
-
-   The scaffold logs panel activity and validates that configuration and cache
-  directories are wired correctly. It does **not** yet render a full Dear PyGui
-   experience, but it establishes the application lifecycle for follow-up work.
-
-## Working With Codex
-
-Codex is the code-generation and refactoring engine for this repository. To keep changes deterministic:
-
-- Treat Codex as a co-developer that must follow the rules in:
-  - `CONTRIBUTING.md`
-  - `CODEX_GUIDE.md`
-  - `docs/ARCHITECTURE_OVERVIEW.md`
-- Always ask Codex to:
-  - Respect module boundaries.
-  - Keep functions and classes small and focused.
-  - Update or create documentation when modifying behavior.
-  - Provide unified diffs (`@@ ... @@` blocks) when changing files.
-- Prefer incremental, well-scoped tasks (e.g. refactor a single module, add one feature, etc.).
-
-## Git Hygiene
-
-- Default branch: `main`
-- Development branch: `develop`
-- Feature branches: `feature/<area>-<short-description>`
-- Hotfix branches: `hotfix/<issue-id>-<short-description>`
-
-See `CONTRIBUTING.md` for full details.
-
-## Documentation Map
-
-- `README.md` — high-level overview and onboarding.
-- `CONTRIBUTING.md` — branching, reviews, and Codex workflow.
-- `CODE_OF_CONDUCT.md` — community expectations.
-- `CODEX_GUIDE.md` — how to work with Codex on this project.
-- `docs/ARCHITECTURE_OVERVIEW.md` — modules and boundaries.
-- `docs/CSVTOOLS_REFERENCE.md` — CsvTools usage patterns.
-- `docs/PERFREPORTTOOL_REFERENCE.md` — PerfReportTool usage patterns.
-
-Keep these up to date whenever behavior changes.
+- Keep the ImGui code organized under `cerebrus/ui/imgui_app/`.
+- Update docs in `docs/` whenever behavior or layout changes.
+- Prefer small, focused changes with clear rationale and follow-up validation steps.
