@@ -42,8 +42,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)Cerebrus\Binaries\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Cerebrus\Intermediates\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>CerebrusImGuiApp</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -60,6 +60,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;User32.lib;Gdi32.lib;Imm32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)Cerebrus\Builds\$(Platform)\$(Configuration)\" mkdir "$(SolutionDir)Cerebrus\Builds\$(Platform)\$(Configuration)\" &amp; copy /Y "$(TargetPath)" "$(SolutionDir)Cerebrus\Builds\$(Platform)\$(Configuration)\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -78,6 +81,9 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;User32.lib;Gdi32.lib;Imm32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)Cerebrus\Builds\$(Platform)\$(Configuration)\" mkdir "$(SolutionDir)Cerebrus\Builds\$(Platform)\$(Configuration)\" &amp; copy /Y "$(TargetPath)" "$(SolutionDir)Cerebrus\Builds\$(Platform)\$(Configuration)\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Main.cpp" />
