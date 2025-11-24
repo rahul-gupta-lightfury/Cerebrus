@@ -34,11 +34,30 @@ private:
 class PerfReportWindow
 {
 public:
+    PerfReportWindow();
     void Render(const ImGuiIO &io);
 
 private:
+    void RenderDeviceAndPackagePanel();
     void RenderForm();
     void RenderStatus(const ImGuiIO &io);
 
+    struct DeviceRow
+    {
+        const char *name;
+        const char *model;
+        const char *serial;
+    };
+
+    struct PackageProfile
+    {
+        char nickname[64];
+        char packageName[128];
+        char securityToken[128];
+    };
+
     PerfReportState m_State;
+    int m_SelectedDeviceIndex = 0;
+    ImVector<DeviceRow> m_DeviceRows;
+    PackageProfile m_Profile;
 };
