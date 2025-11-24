@@ -34,11 +34,24 @@ private:
 class PerfReportWindow
 {
 public:
+    PerfReportWindow();
     void Render(const ImGuiIO &io);
 
 private:
     void RenderForm();
     void RenderStatus(const ImGuiIO &io);
+    void RenderDeviceExplorer();
+
+    struct DeviceRow
+    {
+        const char *name;
+        const char *model;
+        const char *serial;
+        const char *location;
+        const char *status;
+    };
 
     PerfReportState m_State;
+    int m_SelectedDeviceIndex = 0;
+    ImVector<DeviceRow> m_DeviceRows;
 };
