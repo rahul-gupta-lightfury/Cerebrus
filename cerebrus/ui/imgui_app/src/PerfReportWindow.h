@@ -52,13 +52,6 @@ private:
         const char *status;
     };
 
-    struct DeviceRow
-    {
-        const char *name;
-        const char *model;
-        const char *serial;
-    };
-
     struct PackageProfile
     {
         char nickname[64];
@@ -67,6 +60,7 @@ private:
     };
 
     PerfReportState m_State;
+    PackageProfile m_Profile{};
     int m_SelectedDeviceIndex = 0;
     ImVector<DeviceRow> m_DeviceRows;
 };

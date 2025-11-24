@@ -11,6 +11,13 @@ public:
     MenuBar();
     void Render();
 
+    struct BindingRow
+    {
+        std::string action;
+        std::string label;
+        std::array<char, 32> buffer{};
+    };
+
 private:
     void RenderKeyBindingsPopup();
     void SyncBuffersFromBindings();
@@ -19,13 +26,6 @@ private:
     void ExportBindings();
     void EnsureLatestWins(const std::string &action, const std::string &binding);
     const char *GetShortcutForAction(const std::string &action) const;
-
-    struct BindingRow
-    {
-        std::string action;
-        std::string label;
-        std::array<char, 32> buffer{};
-    };
 
     bool m_ShowKeyBindingsPopup = false;
     std::unordered_map<std::string, std::string> m_Bindings;
