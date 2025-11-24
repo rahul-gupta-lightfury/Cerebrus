@@ -22,6 +22,7 @@ This document defines the baseline coding standards for all Python and configura
   - Prefix global variables and constants with `g_`; consolidate shared values (e.g., UI dimensions, default key bindings) in a dedicated global header to prevent magic numbers.
   - Data members use camel case with an `m_` prefix (e.g., `m_InputPath`, `m_RequestSubmitted`).
   - Prefer descriptive method names such as `RenderMenuBar`, `ApplyDarkGreen`, or `QueueRequest`.
+  - Macros must be written in **ALL_CAPS_WITH_UNDERSCORES** and kept to a minimum (prefer `constexpr` or scoped constants over new macros).
 - Dependencies and includes:
   - Include only what you use; keep headers minimal and prefer forward declarations when practical.
   - Never wrap `#include` directives in `try/catch` blocks.

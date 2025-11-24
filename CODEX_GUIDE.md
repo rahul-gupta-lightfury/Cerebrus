@@ -39,6 +39,8 @@ When you ask Codex to modify code, include constraints such as:
 - Do not hardcode local paths; use config objects or configuration files.
 - Prefer pure functions and clear data models where possible.
 - Update or create documentation when behavior changes.
+- Adhere to coding standards: avoid namespaces in the ImGui layer unless a library requires them, and keep macros in
+  **ALL_CAPS_WITH_UNDERSCORES**.
 
 ## Preferred Output Format
 
