@@ -55,6 +55,9 @@
     <ClInclude Include="src\JsonUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\AppGlobals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\PerfReportWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>

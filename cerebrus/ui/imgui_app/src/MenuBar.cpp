@@ -4,22 +4,8 @@
 #include <sstream>
 
 #include "imgui.h"
+#include "AppGlobals.h"
 #include "JsonUtils.h"
-
-static constexpr int kKeyBindingFieldWidth = 180;
-
-static std::unordered_map<std::string, std::string> GetDefaultKeyBindings()
-{
-    return {
-        {"file.new_window", "Ctrl+Shift+N"},
-        {"file.exit", "Alt+F4"},
-        {"view.reset_layout", "Ctrl+0"},
-        {"profile.new", "Ctrl+N"},
-        {"profile.open", "Ctrl+O"},
-        {"profile.save", "Ctrl+S"},
-        {"profile.edit", "Ctrl+E"},
-    };
-}
 
 static const std::vector<MenuBar::BindingRow> &GetBindingRowsTemplate()
 {
@@ -36,7 +22,7 @@ static const std::vector<MenuBar::BindingRow> &GetBindingRowsTemplate()
 }
 
 MenuBar::MenuBar()
-    : m_DefaultBindings(GetDefaultKeyBindings())
+    : m_DefaultBindings(g_DefaultKeyBindings)
 {
     m_Bindings = m_DefaultBindings;
     m_StagedBindings = m_Bindings;
@@ -162,9 +148,9 @@ void MenuBar::RenderKeyBindingsPopup()
 
         if (ImGui::BeginTable("KeyBindingTable", 3, ImGuiTableFlags_SizingStretchSame))
         {
-            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, g_KeyBindingActionColumnWidth);
             ImGui::TableSetupColumn("New Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, 180.0f);
+            ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, g_KeyBindingActiveColumnWidth);
             ImGui::TableHeadersRow();
 
             for (BindingRow &row : m_BindingRows)
@@ -175,7 +161,7 @@ void MenuBar::RenderKeyBindingsPopup()
                 ImGui::TextUnformatted(row.label.c_str());
 
                 ImGui::TableSetColumnIndex(1);
-                ImGui::SetNextItemWidth(static_cast<float>(kKeyBindingFieldWidth));
+                ImGui::SetNextItemWidth(static_cast<float>(g_KeyBindingFieldWidth));
                 ImGui::InputText(("##" + row.action).c_str(), row.buffer.data(), row.buffer.size());
                 ImGui::SameLine();
                 if (ImGui::Button(("Assign##" + row.action).c_str()))
@@ -264,16 +250,7 @@ void MenuBar::ResetBindingsToDefault()
 
 void MenuBar::ImportSampleBindings()
 {
-    const std::string sampleJson = R"({
-  "file.new_window": "Ctrl+Shift+N",
-  "file.exit": "Alt+F4",
-  "view.reset_layout": "Ctrl+0",
-  "profile.new": "Ctrl+N",
-  "profile.open": "Ctrl+O",
-  "profile.save": "Ctrl+S",
-  "profile.edit": "Ctrl+E"
-})";
-    ImportBindingsFromJson(sampleJson);
+    ImportBindingsFromJson(JsonUtils::WriteFlatObject(g_DefaultKeyBindings));
 }
 
 void MenuBar::ExportBindings()

@@ -101,6 +101,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\JsonUtils.h" />
+    <ClInclude Include="src\AppGlobals.h" />
     <ClInclude Include="src\MenuBar.h" />
     <ClInclude Include="src\PerfReportWindow.h" />
     <ClInclude Include="src\Theme.h" />
