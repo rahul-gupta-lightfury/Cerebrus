@@ -4,41 +4,25 @@
 #include <sstream>
 
 #include "imgui.h"
+#include "AppGlobals.h"
+#include "JsonUtils.h"
 
-namespace
+static const std::vector<MenuBar::BindingRow> &GetBindingRowsTemplate()
 {
-    constexpr int kKeyBindingFieldWidth = 180;
-
-    std::unordered_map<std::string, std::string> GetDefaultKeyBindings()
-    {
-        return {
-            {"file.new_window", "Ctrl+Shift+N"},
-            {"file.exit", "Alt+F4"},
-            {"view.reset_layout", "Ctrl+0"},
-            {"profile.new", "Ctrl+N"},
-            {"profile.open", "Ctrl+O"},
-            {"profile.save", "Ctrl+S"},
-            {"profile.edit", "Ctrl+E"},
-        };
-    }
-
-    const std::vector<MenuBar::BindingRow> &GetBindingRowsTemplate()
-    {
-        static std::vector<MenuBar::BindingRow> rows = {
-            {"file.new_window", "New Window", {}},
-            {"file.exit", "Exit", {}},
-            {"view.reset_layout", "Reset Layout", {}},
-            {"profile.new", "New Profile", {}},
-            {"profile.open", "Open Profile", {}},
-            {"profile.save", "Save Profile", {}},
-            {"profile.edit", "Edit Profile", {}},
-        };
-        return rows;
-    }
+    static std::vector<MenuBar::BindingRow> rows = {
+        {"file.new_window", "New Window", {}},
+        {"file.exit", "Exit", {}},
+        {"view.reset_layout", "Reset Layout", {}},
+        {"profile.new", "New Profile", {}},
+        {"profile.open", "Open Profile", {}},
+        {"profile.save", "Save Profile", {}},
+        {"profile.edit", "Edit Profile", {}},
+    };
+    return rows;
 }
 
 MenuBar::MenuBar()
-    : m_DefaultBindings(GetDefaultKeyBindings())
+    : m_DefaultBindings(g_DefaultKeyBindings)
 {
     m_Bindings = m_DefaultBindings;
     m_StagedBindings = m_Bindings;
@@ -164,9 +148,9 @@ void MenuBar::RenderKeyBindingsPopup()
 
         if (ImGui::BeginTable("KeyBindingTable", 3, ImGuiTableFlags_SizingStretchSame))
         {
-            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, g_KeyBindingActionColumnWidth);
             ImGui::TableSetupColumn("New Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, 180.0f);
+            ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, g_KeyBindingActiveColumnWidth);
             ImGui::TableHeadersRow();
 
             for (BindingRow &row : m_BindingRows)
@@ -177,7 +161,7 @@ void MenuBar::RenderKeyBindingsPopup()
                 ImGui::TextUnformatted(row.label.c_str());
 
                 ImGui::TableSetColumnIndex(1);
-                ImGui::SetNextItemWidth(static_cast<float>(kKeyBindingFieldWidth));
+                ImGui::SetNextItemWidth(static_cast<float>(g_KeyBindingFieldWidth));
                 ImGui::InputText(("##" + row.action).c_str(), row.buffer.data(), row.buffer.size());
                 ImGui::SameLine();
                 if (ImGui::Button(("Assign##" + row.action).c_str()))
@@ -266,25 +250,29 @@ void MenuBar::ResetBindingsToDefault()
 
 void MenuBar::ImportSampleBindings()
 {
-    m_Bindings = GetDefaultKeyBindings();
-    m_StagedBindings = m_Bindings;
-    SyncBuffersFromBindings();
+    ImportBindingsFromJson(JsonUtils::WriteFlatObject(g_DefaultKeyBindings));
 }
 
 void MenuBar::ExportBindings()
 {
-    std::ostringstream output;
-    output << "{\n";
-    for (size_t index = 0; index < m_BindingRows.size(); ++index)
+    JsonUtils::StringMap values;
+    for (const BindingRow &row : m_BindingRows)
     {
-        const std::string &action = m_BindingRows[index].action;
-        const auto it = m_StagedBindings.find(action);
-        const std::string value = (it != m_StagedBindings.end()) ? it->second : std::string();
-        output << "  \"" << action << "\": \"" << value << "\"";
-        output << (index + 1 < m_BindingRows.size() ? ",\n" : "\n");
+        const auto it = m_StagedBindings.find(row.action);
+        values[row.action] = (it != m_StagedBindings.end()) ? it->second : std::string();
     }
-    output << "}";
-    m_ExportBuffer = output.str();
+    m_ExportBuffer = JsonUtils::WriteFlatObject(values);
+}
+
+void MenuBar::ImportBindingsFromJson(const std::string &jsonText)
+{
+    const JsonUtils::StringMap parsed = JsonUtils::ParseFlatObject(jsonText);
+    if (!parsed.empty())
+    {
+        m_Bindings = parsed;
+        m_StagedBindings = m_Bindings;
+        SyncBuffersFromBindings();
+    }
 }
 
 void MenuBar::EnsureLatestWins(const std::string &action, const std::string &binding)
