@@ -13,12 +13,9 @@ namespace
 
 PerfReportWindow::PerfReportWindow()
 {
-    m_DeviceRows.push_back({"1 node", "VRC01", "23222333"});
-    m_DeviceRows.push_back({"DevKit", "XR-12", "44559911"});
-    m_DeviceRows.push_back({"Perf Rig", "P52S", "23222333"});
-    std::snprintf(m_Profile.nickname, IM_ARRAYSIZE(m_Profile.nickname), "%s", "Dev-Mainline");
-    std::snprintf(m_Profile.packageName, IM_ARRAYSIZE(m_Profile.packageName), "%s", "com.lightfury.titan");
-    std::snprintf(m_Profile.securityToken, IM_ARRAYSIZE(m_Profile.securityToken), "%s", "F33AAEB445176EA93837B69679B3E2C4");
+    m_DeviceRows.push_back({"1 node", "VRC01", "23222333", "London", "Ready"});
+    m_DeviceRows.push_back({"DevKit", "XR-12", "44559911", "Lab A", "Available"});
+    m_DeviceRows.push_back({"Perf Rig", "P52S", "23222333", "Lab B", "Reserved"});
 }
 
 PerfReportState::PerfReportState()
@@ -102,6 +99,7 @@ void PerfReportWindow::Render(const ImGuiIO &io)
     ImGui::Separator();
     ImGui::Spacing();
     RenderForm();
+    RenderDeviceExplorer();
     RenderStatus(io);
 
     ImGui::End();
@@ -249,6 +247,67 @@ void PerfReportWindow::RenderForm()
     if (ImGui::Button("Generate Perf Report", ImVec2(-1, 0)))
     {
         m_State.QueueRequest();
+    }
+}
+
+void PerfReportWindow::RenderDeviceExplorer()
+{
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::TextUnformatted("Device exploration");
+    ImGui::Spacing();
+
+    if (ImGui::BeginTable("DeviceExplorer", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV))
+    {
+        ImGui::TableSetupColumn("Devices", ImGuiTableColumnFlags_WidthStretch, 0.4f);
+        ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthStretch, 0.6f);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        if (ImGui::Button("Refresh", ImVec2(-1, 0)))
+        {
+            // Placeholder for a refresh action when device discovery is wired up.
+        }
+        if (ImGui::Button("Auto choose best", ImVec2(-1, 0)))
+        {
+            // Placeholder for the best-device selection logic.
+        }
+
+        ImGui::BeginChild("DeviceList", ImVec2(0, 160), true);
+        for (int index = 0; index < m_DeviceRows.Size; ++index)
+        {
+            ImGui::PushID(index);
+            const bool selected = (m_SelectedDeviceIndex == index);
+            if (ImGui::Selectable(m_DeviceRows[index].name, selected))
+            {
+                m_SelectedDeviceIndex = index;
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+
+        ImGui::TableSetColumnIndex(1);
+        ImGui::BeginChild("DeviceDetails", ImVec2(0, 0), true);
+        if (m_DeviceRows.empty())
+        {
+            ImGui::TextDisabled("No devices found.");
+        }
+        else
+        {
+            const DeviceRow &device = m_DeviceRows[m_SelectedDeviceIndex % m_DeviceRows.Size];
+            ImGui::Text("Name: %s", device.name);
+            ImGui::Text("Model: %s", device.model);
+            ImGui::Text("Serial: %s", device.serial);
+            ImGui::Text("Location: %s", device.location);
+            ImGui::Text("Status: %s", device.status);
+            ImGui::Spacing();
+            ImGui::TextWrapped("Use the controls on the left to refresh or auto-select the best device. Device pairing and activation "
+                               "statuses will surface here once connected to real discovery endpoints.");
+        }
+        ImGui::EndChild();
+
+        ImGui::EndTable();
     }
 }
 
