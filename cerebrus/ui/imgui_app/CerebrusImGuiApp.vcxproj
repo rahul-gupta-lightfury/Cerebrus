@@ -86,7 +86,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\JsonUtils.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\MenuBar.cpp" />
     <ClCompile Include="src\PerfReportWindow.cpp" />
@@ -100,8 +99,6 @@
     <ClCompile Include="..\..\thirdparty\imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\JsonUtils.h" />
-    <ClInclude Include="src\AppGlobals.h" />
     <ClInclude Include="src\MenuBar.h" />
     <ClInclude Include="src\PerfReportWindow.h" />
     <ClInclude Include="src\Theme.h" />

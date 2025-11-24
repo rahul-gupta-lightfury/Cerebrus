@@ -16,13 +16,11 @@ This document defines the baseline coding standards for all Python and configura
 - File naming: use PascalCase/AllmanCase for translation units and headers (e.g., `Main.cpp`, `PerfReportWindow.h`).
 - Formatting and structure:
   - Allman style braces: open braces on their own line for classes, methods, functions, and control statements.
-  - Avoid namespaces across the ImGui layer and broader codebase unless explicitly required by an external library; prefer free functions and file-static helpers.
+  - Avoid namespaces in the ImGui layer to keep linkage simple.
   - Keep functions small and focused on a single responsibility.
 - Naming:
-  - Prefix global variables and constants with `g_`; consolidate shared values (e.g., UI dimensions, default key bindings) in a dedicated global header to prevent magic numbers.
   - Data members use camel case with an `m_` prefix (e.g., `m_InputPath`, `m_RequestSubmitted`).
   - Prefer descriptive method names such as `RenderMenuBar`, `ApplyDarkGreen`, or `QueueRequest`.
-  - Macros must be written in **ALL_CAPS_WITH_UNDERSCORES** and kept to a minimum (prefer `constexpr` or scoped constants over new macros).
 - Dependencies and includes:
   - Include only what you use; keep headers minimal and prefer forward declarations when practical.
   - Never wrap `#include` directives in `try/catch` blocks.

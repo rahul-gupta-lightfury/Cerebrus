@@ -14,9 +14,6 @@
     <ClCompile Include="src\Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\JsonUtils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\MenuBar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -50,12 +47,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\MenuBar.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\JsonUtils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\AppGlobals.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\PerfReportWindow.h">

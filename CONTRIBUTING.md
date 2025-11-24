@@ -106,10 +106,6 @@ See `CODEX_GUIDE.md` for detailed patterns and examples.
 - Formatting:
   - Use `black` and `isort` (or equivalent) for consistent formatting.
   - Run linting before sending PRs.
-- C++ (ImGui layer):
-  - Avoid namespaces unless required by a third-party dependency.
-  - Keep macros in **ALL_CAPS_WITH_UNDERSCORES** and prefer `constexpr` constants when possible.
-  - Follow the detailed guidance in `CODE_STANDARDS.md` for naming and structure.
 
 ## Testing
 

@@ -23,7 +23,6 @@ private:
     void SyncBuffersFromBindings();
     void ResetBindingsToDefault();
     void ImportSampleBindings();
-    void ImportBindingsFromJson(const std::string &jsonText);
     void ExportBindings();
     void EnsureLatestWins(const std::string &action, const std::string &binding);
     const char *GetShortcutForAction(const std::string &action) const;
