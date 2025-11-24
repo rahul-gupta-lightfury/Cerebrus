@@ -3,43 +3,40 @@
 #include <cctype>
 #include <sstream>
 
-namespace
+static std::string Indent(size_t depth, int indentSpaces)
 {
-    std::string Indent(size_t depth, int indentSpaces)
-    {
-        return std::string(depth * static_cast<size_t>(indentSpaces), ' ');
-    }
+    return std::string(depth * static_cast<size_t>(indentSpaces), ' ');
+}
 
-    std::string Escape(const std::string &value)
+static std::string Escape(const std::string &value)
+{
+    std::string escaped;
+    escaped.reserve(value.size());
+    for (const char ch : value)
     {
-        std::string escaped;
-        escaped.reserve(value.size());
-        for (const char ch : value)
+        switch (ch)
         {
-            switch (ch)
-            {
-                case '\\':
-                    escaped += "\\\\";
-                    break;
-                case '"':
-                    escaped += "\\\"";
-                    break;
-                case '\n':
-                    escaped += "\\n";
-                    break;
-                case '\r':
-                    escaped += "\\r";
-                    break;
-                case '\t':
-                    escaped += "\\t";
-                    break;
-                default:
-                    escaped.push_back(ch);
-                    break;
-            }
+            case '\\':
+                escaped += "\\\\";
+                break;
+            case '"':
+                escaped += "\\\"";
+                break;
+            case '\n':
+                escaped += "\\n";
+                break;
+            case '\r':
+                escaped += "\\r";
+                break;
+            case '\t':
+                escaped += "\\t";
+                break;
+            default:
+                escaped.push_back(ch);
+                break;
         }
-        return escaped;
     }
+    return escaped;
 }
 
 std::string JsonUtils::WriteFlatObject(const StringMap &values, int indentSpaces)

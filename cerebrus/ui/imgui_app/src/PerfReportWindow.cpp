@@ -12,33 +12,30 @@
 
 #include "JsonUtils.h"
 
-namespace
+static ImVec2 GetBrowseButtonSize()
 {
-    ImVec2 GetBrowseButtonSize()
-    {
-        const float buttonWidth = 110.0f;
-        return ImVec2(buttonWidth, 0.0f);
-    }
+    const float buttonWidth = 110.0f;
+    return ImVec2(buttonWidth, 0.0f);
+}
 
-    std::string GetFilename(const std::filesystem::path &path)
-    {
-        return path.filename().empty() ? path.string() : path.filename().string();
-    }
+static std::string GetFilename(const std::filesystem::path &path)
+{
+    return path.filename().empty() ? path.string() : path.filename().string();
+}
 
-    std::string MakeTimestamp()
-    {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
-        std::tm tm{};
+static std::string MakeTimestamp()
+{
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
+    std::tm tm{};
 #ifdef _WIN32
-        localtime_s(&tm, &nowTime);
+    localtime_s(&tm, &nowTime);
 #else
-        localtime_r(&nowTime, &tm);
+    localtime_r(&nowTime, &tm);
 #endif
-        std::ostringstream stream;
-        stream << std::put_time(&tm, "%H:%M:%S");
-        return stream.str();
-    }
+    std::ostringstream stream;
+    stream << std::put_time(&tm, "%H:%M:%S");
+    return stream.str();
 }
 
 PerfReportWindow::PerfReportWindow()

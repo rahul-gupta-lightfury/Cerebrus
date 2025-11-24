@@ -6,36 +6,33 @@
 #include "imgui.h"
 #include "JsonUtils.h"
 
-namespace
+static constexpr int kKeyBindingFieldWidth = 180;
+
+static std::unordered_map<std::string, std::string> GetDefaultKeyBindings()
 {
-    constexpr int kKeyBindingFieldWidth = 180;
+    return {
+        {"file.new_window", "Ctrl+Shift+N"},
+        {"file.exit", "Alt+F4"},
+        {"view.reset_layout", "Ctrl+0"},
+        {"profile.new", "Ctrl+N"},
+        {"profile.open", "Ctrl+O"},
+        {"profile.save", "Ctrl+S"},
+        {"profile.edit", "Ctrl+E"},
+    };
+}
 
-    std::unordered_map<std::string, std::string> GetDefaultKeyBindings()
-    {
-        return {
-            {"file.new_window", "Ctrl+Shift+N"},
-            {"file.exit", "Alt+F4"},
-            {"view.reset_layout", "Ctrl+0"},
-            {"profile.new", "Ctrl+N"},
-            {"profile.open", "Ctrl+O"},
-            {"profile.save", "Ctrl+S"},
-            {"profile.edit", "Ctrl+E"},
-        };
-    }
-
-    const std::vector<MenuBar::BindingRow> &GetBindingRowsTemplate()
-    {
-        static std::vector<MenuBar::BindingRow> rows = {
-            {"file.new_window", "New Window", {}},
-            {"file.exit", "Exit", {}},
-            {"view.reset_layout", "Reset Layout", {}},
-            {"profile.new", "New Profile", {}},
-            {"profile.open", "Open Profile", {}},
-            {"profile.save", "Save Profile", {}},
-            {"profile.edit", "Edit Profile", {}},
-        };
-        return rows;
-    }
+static const std::vector<MenuBar::BindingRow> &GetBindingRowsTemplate()
+{
+    static std::vector<MenuBar::BindingRow> rows = {
+        {"file.new_window", "New Window", {}},
+        {"file.exit", "Exit", {}},
+        {"view.reset_layout", "Reset Layout", {}},
+        {"profile.new", "New Profile", {}},
+        {"profile.open", "Open Profile", {}},
+        {"profile.save", "Save Profile", {}},
+        {"profile.edit", "Edit Profile", {}},
+    };
+    return rows;
 }
 
 MenuBar::MenuBar()
