@@ -34,8 +34,8 @@ void MenuBar::Render()
 
 	if (ImGui::BeginMenu("Profile"))
 	{
-		ImGui::MenuItem("New", "Ctrl+N");
-		ImGui::MenuItem("Open...", "Ctrl+O");
+		ImGui::MenuItem("New", "Ctrl+Shift+N");
+		ImGui::MenuItem("Open...", "Ctrl+Shift+O");
 		ImGui::MenuItem("Save", "Ctrl+Shift+S");
 		ImGui::MenuItem("Edit", "Ctrl+E");
 		ImGui::EndMenu();

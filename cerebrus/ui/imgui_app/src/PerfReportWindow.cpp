@@ -5,7 +5,7 @@
 PerfReportState::PerfReportState()
     : m_InputPath{""},
       m_OutputDirectory{""},
-      m_OutputFile{"report.prt"},
+      m_OutputFile{"report"},
       m_RequestSubmitted(false),
       m_StatusText{"Select inputs and generate a report."}
 {
@@ -91,9 +91,18 @@ void PerfReportWindow::RenderForm()
         " generated file.");
     ImGui::Spacing();
 
-    ImGui::InputText("Input artifact (CSV/PRC)", m_State.GetInputPathBuffer(), m_State.GetInputPathBufferSize());
-    ImGui::InputText("Output directory", m_State.GetOutputDirectoryBuffer(), m_State.GetOutputDirectoryBufferSize());
-    ImGui::InputText("Output file name", m_State.GetOutputFileBuffer(), m_State.GetOutputFileBufferSize());
+    
+    ImGui::TextWrapped("Input artifact (CSV)");
+    ImGui::SameLine(0, 20);
+    ImGui::InputText("##", m_State.GetInputPathBuffer(), m_State.GetInputPathBufferSize());
+
+    ImGui::TextWrapped("Output directory");
+    ImGui::SameLine(0, 20);
+    ImGui::InputText("##", m_State.GetOutputDirectoryBuffer(), m_State.GetOutputDirectoryBufferSize());
+    
+    ImGui::TextWrapped("Output file name (No Extension Needed)");
+    ImGui::SameLine(0, 20);
+    ImGui::InputText("##", m_State.GetOutputFileBuffer(), m_State.GetOutputFileBufferSize());
 
     if (ImGui::Button("Generate Perf Report", ImVec2(-1, 0)))
     {
