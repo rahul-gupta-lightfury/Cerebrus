@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include "imgui.h"
+#include "JsonUtils.h"
 
 namespace
 {
@@ -266,25 +267,38 @@ void MenuBar::ResetBindingsToDefault()
 
 void MenuBar::ImportSampleBindings()
 {
-    m_Bindings = GetDefaultKeyBindings();
-    m_StagedBindings = m_Bindings;
-    SyncBuffersFromBindings();
+    const std::string sampleJson = R"({
+  "file.new_window": "Ctrl+Shift+N",
+  "file.exit": "Alt+F4",
+  "view.reset_layout": "Ctrl+0",
+  "profile.new": "Ctrl+N",
+  "profile.open": "Ctrl+O",
+  "profile.save": "Ctrl+S",
+  "profile.edit": "Ctrl+E"
+})";
+    ImportBindingsFromJson(sampleJson);
 }
 
 void MenuBar::ExportBindings()
 {
-    std::ostringstream output;
-    output << "{\n";
-    for (size_t index = 0; index < m_BindingRows.size(); ++index)
+    JsonUtils::StringMap values;
+    for (const BindingRow &row : m_BindingRows)
     {
-        const std::string &action = m_BindingRows[index].action;
-        const auto it = m_StagedBindings.find(action);
-        const std::string value = (it != m_StagedBindings.end()) ? it->second : std::string();
-        output << "  \"" << action << "\": \"" << value << "\"";
-        output << (index + 1 < m_BindingRows.size() ? ",\n" : "\n");
+        const auto it = m_StagedBindings.find(row.action);
+        values[row.action] = (it != m_StagedBindings.end()) ? it->second : std::string();
     }
-    output << "}";
-    m_ExportBuffer = output.str();
+    m_ExportBuffer = JsonUtils::WriteFlatObject(values);
+}
+
+void MenuBar::ImportBindingsFromJson(const std::string &jsonText)
+{
+    const JsonUtils::StringMap parsed = JsonUtils::ParseFlatObject(jsonText);
+    if (!parsed.empty())
+    {
+        m_Bindings = parsed;
+        m_StagedBindings = m_Bindings;
+        SyncBuffersFromBindings();
+    }
 }
 
 void MenuBar::EnsureLatestWins(const std::string &action, const std::string &binding)
