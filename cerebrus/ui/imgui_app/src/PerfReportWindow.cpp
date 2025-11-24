@@ -99,7 +99,7 @@ void PerfReportWindow::Render(const ImGuiIO &io)
     ImGui::Separator();
     ImGui::Spacing();
     RenderForm();
-    RenderDeviceExplorer();
+//    RenderDeviceExplorer();
     RenderStatus(io);
 
     ImGui::End();
@@ -114,20 +114,23 @@ void PerfReportWindow::RenderDeviceAndPackagePanel()
     ImGui::Text("Selected Package: %s", m_Profile.packageName[0] == '\0' ? "<unset>" : m_Profile.packageName);
     ImGui::Spacing();
 
-    if (ImGui::BeginTable("DeviceAndPackage", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV))
+    if (ImGui::BeginTable("DeviceAndPackage", 1, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV))
     {
         ImGui::TableSetupColumn("Devices", ImGuiTableColumnFlags_WidthStretch, 0.45f);
-        ImGui::TableSetupColumn("Package", ImGuiTableColumnFlags_WidthStretch, 0.55f);
-
+        
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::TextUnformatted("Device");
         ImGui::BeginChild("DeviceSelection", ImVec2(0, 200), true);
         if (ImGui::BeginTable("DeviceTable", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV))
         {
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Make", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Model", ImGuiTableColumnFlags_WidthFixed, 120.0f);
             ImGui::TableSetupColumn("Serial", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+            ImGui::TableSetupColumn("Android Version", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+            ImGui::TableSetupColumn("SDK API Version", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+            ImGui::TableSetupColumn("Total RAM", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+                        
             ImGui::TableHeadersRow();
 
             for (int index = 0; index < m_DeviceRows.Size; ++index)
@@ -152,44 +155,44 @@ void PerfReportWindow::RenderDeviceAndPackagePanel()
         ImGui::TableSetColumnIndex(1);
         ImGui::TextUnformatted("Package");
         ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 6.0f));
-        if (ImGui::BeginTable("PackageForm", 2, ImGuiTableFlags_SizingStretchSame))
-        {
-            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextUnformatted("Profile Nickname");
-            ImGui::TableSetColumnIndex(1);
-            ImGui::SetNextItemWidth(-1);
-            ImGui::InputText("##ProfileNickname", m_Profile.nickname, IM_ARRAYSIZE(m_Profile.nickname));
-
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextUnformatted("Package Name");
-            ImGui::TableSetColumnIndex(1);
-            ImGui::SetNextItemWidth(-1);
-            ImGui::InputText("##PackageName", m_Profile.packageName, IM_ARRAYSIZE(m_Profile.packageName));
-
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextUnformatted("Security Token (Hex, optional)");
-            ImGui::TableSetColumnIndex(1);
-            ImGui::SetNextItemWidth(-1);
-            ImGui::InputText("##SecurityToken", m_Profile.securityToken, IM_ARRAYSIZE(m_Profile.securityToken));
-
-            ImGui::EndTable();
-        }
+//        if (ImGui::BeginTable("PackageForm", 2, ImGuiTableFlags_SizingStretchSame))
+//        {
+//            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+//            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+//
+//            ImGui::TableNextRow();
+//            ImGui::TableSetColumnIndex(0);
+//            ImGui::AlignTextToFramePadding();
+//            ImGui::TextUnformatted("Profile Nickname");
+//            ImGui::TableSetColumnIndex(1);
+//            ImGui::SetNextItemWidth(-1);
+//            ImGui::InputText("##ProfileNickname", m_Profile.nickname, IM_ARRAYSIZE(m_Profile.nickname));
+//
+//            ImGui::TableNextRow();
+//            ImGui::TableSetColumnIndex(0);
+//            ImGui::AlignTextToFramePadding();
+//            ImGui::TextUnformatted("Package Name");
+//            ImGui::TableSetColumnIndex(1);
+//            ImGui::SetNextItemWidth(-1);
+//            ImGui::InputText("##PackageName", m_Profile.packageName, IM_ARRAYSIZE(m_Profile.packageName));
+//
+//            ImGui::TableNextRow();
+//            ImGui::TableSetColumnIndex(0);
+//            ImGui::AlignTextToFramePadding();
+//            ImGui::TextUnformatted("Security Token (Hex, optional)");
+//            ImGui::TableSetColumnIndex(1);
+//            ImGui::SetNextItemWidth(-1);
+//            ImGui::InputText("##SecurityToken", m_Profile.securityToken, IM_ARRAYSIZE(m_Profile.securityToken));
+//
+//            ImGui::EndTable();
+//        }
         ImGui::PopStyleVar();
         ImGui::Spacing();
-        ImGui::TextDisabled("Profile JSON example:");
-        ImGui::TextWrapped("{\n  \"Profile Nickname\": \"%s\",\n  \"Package Name\": \"%s\",\n  \"Security Token\": \"%s\"\n}",
-                           m_Profile.nickname,
-                           m_Profile.packageName,
-                           m_Profile.securityToken[0] == '\0' ? "<optional>" : m_Profile.securityToken);
+//         ImGui::TextDisabled("Profile JSON example:");
+//         ImGui::TextWrapped("{\n  \"Profile Nickname\": \"%s\",\n  \"Package Name\": \"%s\",\n  \"Security Token\": \"%s\"\n}",
+//                            m_Profile.nickname,
+//                            m_Profile.packageName,
+//                            m_Profile.securityToken[0] == '\0' ? "<optional>" : m_Profile.securityToken);
         ImGui::EndTable();
     }
 }
