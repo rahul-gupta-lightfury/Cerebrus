@@ -1,6 +1,8 @@
 """DearPyGui application entry point."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import dearpygui.dearpygui as dpg
 
 from cerebrus.ui import components
@@ -26,7 +28,14 @@ class CerebrusApp:
 
     def run(self) -> None:
         self.build()
-        dpg.create_viewport(title="Cerebrus", width=1200, height=800)
+        icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.png"
+        dpg.create_viewport(
+            title="Cerebrus",
+            width=1200,
+            height=800,
+            small_icon=str(icon_path),
+            large_icon=str(icon_path),
+        )
         dpg.setup_dearpygui()
         dpg.show_viewport()
         dpg.start_dearpygui()

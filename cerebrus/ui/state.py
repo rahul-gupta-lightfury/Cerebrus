@@ -14,5 +14,6 @@ class UIState:
     profile_nickname: str = "Nickname"
     profile_path: Path = Path("/complete/path/to/profile")
     devices: List[DeviceInfo] = field(default_factory=list)
+    selected_device_serial: str | None = None
     copy_directory: Path = Path("/path/to/copy")
     date_string: str = "2024-01-01"

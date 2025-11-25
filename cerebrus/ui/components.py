@@ -6,15 +6,60 @@ import dearpygui.dearpygui as dpg
 from cerebrus.core.devices import DeviceInfo, collect_device_info
 from cerebrus.ui.state import UIState
 
-
-MENU_LABELS = ["File", "View", "Tools", "Profile", "Settings", "Help"]
+SELECTED_ROW_COLOR = (70, 130, 200, 90)
 
 
 def build_menu_bar() -> None:
     """Render the top menu bar."""
     with dpg.menu_bar():
-        for label in MENU_LABELS:
-            dpg.add_menu(label=label)
+        with dpg.menu(label="File"):
+            dpg.add_menu_item(label="New Window", shortcut="Ctrl+N")
+            dpg.add_menu_item(label="Exit Window", shortcut="Alt+F4")
+
+        with dpg.menu(label="View"):
+            dpg.add_menu_item(label="Reset Layout")
+
+        with dpg.menu(label="Tools"):
+            dpg.add_menu_item(label="Echo Test Command")
+
+        with dpg.menu(label="Profile"):
+            dpg.add_menu_item(label="New")
+            dpg.add_menu_item(label="Open")
+            dpg.add_menu_item(label="Save")
+            dpg.add_menu_item(label="Edit")
+
+        with dpg.menu(label="Settings"):
+            with dpg.menu(label="Load Theme"):
+                dpg.add_menu_item(label="System Color")
+                dpg.add_menu_item(label="Dark")
+                dpg.add_menu_item(label="Light")
+                dpg.add_menu_item(label="Create Custom")
+                dpg.add_separator()
+                dpg.add_menu_item(
+                    label=(
+                        "Auto populate later when theme system is added from themes saved in a "
+                        "fixed directory"
+                    )
+                )
+
+            with dpg.menu(label="Log Colors"):
+                dpg.add_menu_item(label="Edit")
+                dpg.add_menu_item(label="Import")
+                dpg.add_menu_item(label="Export")
+                dpg.add_separator()
+                dpg.add_menu_item(label="Reset to Defaults")
+
+            with dpg.menu(label="Key Bindings"):
+                dpg.add_menu_item(label="Edit")
+                dpg.add_menu_item(label="Import")
+                dpg.add_menu_item(label="Export")
+                dpg.add_separator()
+                dpg.add_menu_item(label="Reset to Defaults")
+
+        with dpg.menu(label="Help"):
+            dpg.add_menu_item(label="Help")
+            dpg.add_menu_item(label="Provide Feedback")
+            dpg.add_menu_item(label="About")
 
 
 def build_profile_summary(state: UIState) -> None:
@@ -103,11 +148,11 @@ def _render_device_table(state: UIState) -> None:
                 for message in ["-", "-", "No devices listed", "-", "-", "-"]:
                     dpg.add_text(message)
         else:
-            for device in state.devices:
-                _render_device_row(device)
+            for row_index, device in enumerate(state.devices):
+                _render_device_row(row_index, device, state)
 
 
-def _render_device_row(device: DeviceInfo) -> None:
+def _render_device_row(row_index: int, device: DeviceInfo, state: UIState) -> None:
     with dpg.table_row():
         values = [
             device.make,
@@ -118,4 +163,25 @@ def _render_device_row(device: DeviceInfo) -> None:
             "True" if device.package_found else "False",
         ]
         for value in values:
-            dpg.add_text(value)
+            dpg.add_selectable(
+                label=value,
+                span_columns=False,
+                callback=_handle_device_select,
+                user_data=(state, row_index, device.serial),
+            )
+
+    if state.selected_device_serial == device.serial:
+        dpg.highlight_table_row("device_table", row_index, SELECTED_ROW_COLOR)
+
+
+def _handle_device_select(sender: int, app_data: int, user_data: tuple[UIState, int, str]) -> None:
+    state, row_index, serial = user_data
+    state.selected_device_serial = serial
+
+    if not dpg.does_item_exist("device_table"):
+        return
+
+    for index in range(len(state.devices)):
+        dpg.unhighlight_table_row("device_table", index)
+
+    dpg.highlight_table_row("device_table", row_index, SELECTED_ROW_COLOR)
