@@ -25,6 +25,8 @@ class ApplicationState:
     config: CerebrusConfig
     devices: list[Device] = field(default_factory=list)
     active_profile: ProjectProfile | None = None
+    profile_path: Path | None = None
+    package_name: str | None = None
 
     def set_devices(self, devices: Iterable[Device]) -> None:
         self.devices = list(devices)

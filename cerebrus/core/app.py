@@ -37,7 +37,8 @@ class CerebrusApp:
         self.cache_manager.ensure_cache()
         devices = self.device_manager.refresh()
         self.state.set_devices(devices)
-        self.state.active_profile = self.profile_registry.list_profiles()[0]
+        profiles = self.profile_registry.list_profiles()
+        self.state.active_profile = profiles[0] if profiles else None
 
     def run(self) -> None:
         LOGGER.info("Running Cerebrus UI stub")
