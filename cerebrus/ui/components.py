@@ -1,6 +1,8 @@
 """Composable DearPyGui building blocks."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import dearpygui.dearpygui as dpg
 
 from cerebrus.core.devices import DeviceInfo, collect_device_info
@@ -102,11 +104,20 @@ def build_file_actions(state: UIState) -> None:
 
         with dpg.group(horizontal=True, horizontal_spacing=10):
             dpg.add_text("Copy Location:")
-            dpg.add_input_text(default_value=str(state.copy_directory), width=350)
-            dpg.add_button(label="Browse", width=100)
+            dpg.add_input_text(
+                tag="copy_location_input",
+                default_value=str(state.copy_directory),
+                width=350,
+                readonly=True,
+            )
+            dpg.add_button(
+                label="Browse",
+                width=100,
+                callback=lambda: _show_file_dialog("copy_dir_dialog"),
+            )
 
     dpg.add_separator()
-    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=260):
+    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=190):
         dpg.add_text("Perf Report", color=(120, 180, 255))
         with dpg.group(horizontal=True, horizontal_spacing=10):
             dpg.add_text("Output file Name:")
@@ -129,7 +140,11 @@ def build_file_actions(state: UIState) -> None:
                 width=350,
                 readonly=True,
             )
-            dpg.add_button(label="Browse", width=100)
+            dpg.add_button(
+                label="Browse",
+                width=100,
+                callback=lambda: _show_file_dialog("input_path_dialog"),
+            )
 
         with dpg.group(horizontal=True, horizontal_spacing=10):
             dpg.add_text("Output Folder Path:")
@@ -139,10 +154,14 @@ def build_file_actions(state: UIState) -> None:
                 width=350,
                 readonly=True,
             )
-            dpg.add_button(label="Browse", width=100)
+            dpg.add_button(
+                label="Browse",
+                width=100,
+                callback=lambda: _show_file_dialog("output_path_dialog"),
+            )
 
-        dpg.add_separator()
-
+    dpg.add_separator()
+    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=200):
         dpg.add_text("Logging", color=(120, 180, 255))
         dpg.add_input_text(
             tag="log_filter_input",
@@ -153,6 +172,8 @@ def build_file_actions(state: UIState) -> None:
         )
         with dpg.child_window(border=True, autosize_x=True, height=130, tag="log_container"):
             _render_log_entries(state)
+
+    _register_file_dialogs(state)
 
 
 def _populate_devices(state: UIState) -> None:
@@ -288,3 +309,77 @@ def _select_device_row(row_index: int, state: UIState) -> None:
         for tag in state.device_cell_tags[row_index]:
             if dpg.does_item_exist(tag):
                 dpg.set_value(tag, True)
+
+
+def _show_file_dialog(tag: str) -> None:
+    if dpg.does_item_exist(tag):
+        dpg.configure_item(tag, show=True)
+
+
+def _register_file_dialogs(state: UIState) -> None:
+    if not dpg.does_item_exist("copy_dir_dialog"):
+        with dpg.file_dialog(
+            directory_selector=True,
+            show=False,
+            callback=_handle_copy_dir_selected,
+            user_data=state,
+            tag="copy_dir_dialog",
+            width=500,
+            height=400,
+        ):
+            dpg.add_file_extension(".*")
+
+    if not dpg.does_item_exist("input_path_dialog"):
+        with dpg.file_dialog(
+            directory_selector=False,
+            show=False,
+            callback=_handle_input_path_selected,
+            user_data=state,
+            tag="input_path_dialog",
+            width=600,
+            height=400,
+        ):
+            dpg.add_file_extension(".csv", color=(0, 120, 255, 255))
+            dpg.add_file_extension(".*")
+
+    if not dpg.does_item_exist("output_path_dialog"):
+        with dpg.file_dialog(
+            directory_selector=True,
+            show=False,
+            callback=_handle_output_path_selected,
+            user_data=state,
+            tag="output_path_dialog",
+            width=500,
+            height=400,
+        ):
+            dpg.add_file_extension(".*")
+
+
+def _handle_copy_dir_selected(sender: int, app_data: dict, user_data: UIState) -> None:
+    selection = next(iter(app_data.get("selections", {}).values()), None)
+    if selection is None:
+        return
+
+    user_data.copy_directory = Path(selection)
+    if dpg.does_item_exist("copy_location_input"):
+        dpg.set_value("copy_location_input", str(selection))
+
+
+def _handle_input_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
+    selection = next(iter(app_data.get("selections", {}).values()), None)
+    if selection is None:
+        return
+
+    user_data.input_path = Path(selection)
+    if dpg.does_item_exist("input_path_label"):
+        dpg.set_value("input_path_label", str(selection))
+
+
+def _handle_output_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
+    selection = next(iter(app_data.get("selections", {}).values()), None)
+    if selection is None:
+        return
+
+    user_data.output_path = Path(selection)
+    if dpg.does_item_exist("output_path_label"):
+        dpg.set_value("output_path_label", str(selection))
