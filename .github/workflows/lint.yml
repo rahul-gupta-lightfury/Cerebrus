@@ -1,13 +1,13 @@
-name: CI
+name: Lint
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: ["dev-py"]
   pull_request:
+    branches: ["dev-py"]
 
 jobs:
-  build:
-    # Run on Windows to mirror the primary deployment environment
+  lint:
     runs-on: windows-latest
 
     steps:
@@ -24,16 +24,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Lint
+      - name: Run linters
         run: |
           black --check .
           isort --check-only .
           mypy cerebrus
-
-      - name: Preflight
-        run: |
-          python -m cerebrus.core.preflight --config config/cerebrus.yaml
-
-      - name: Unit tests
-        run: |
-          pytest

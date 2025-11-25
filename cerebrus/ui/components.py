@@ -15,7 +15,18 @@ class UIComponent(ABC):
 
     def __init__(self, *, state: ApplicationState | None = None, tag: str | None = None) -> None:
         self.state = state
-        self.tag = tag
+        self.alias = tag if isinstance(tag, str) else None
+        self.tag = dpg.generate_uuid() if isinstance(tag, str) else tag
+
+    def tag_kwargs(self) -> dict[str, Any]:
+        """Return keyword arguments for DearPyGui identifiers."""
+
+        kwargs: dict[str, Any] = {}
+        if self.tag is not None:
+            kwargs["tag"] = self.tag
+        if self.alias is not None:
+            kwargs["alias"] = self.alias
+        return kwargs
 
     @abstractmethod
     def render(self, parent: str | int | None = None) -> None:
@@ -34,7 +45,7 @@ class Panel(UIComponent):
         """Draw the panel contents."""
 
     def render(self, parent: str | int | None = None) -> None:  # noqa: D401 - clarified in base
-        with dpg.tab(label=self.label, tag=self.tag, parent=parent):
+        with dpg.tab(label=self.label, parent=parent, **self.tag_kwargs()):
             self.draw()
 
 
@@ -46,7 +57,7 @@ class TabContainer(UIComponent):
         self.panels = panels
 
     def render(self, parent: str | int | None = None) -> None:  # noqa: D401 - clarified in base
-        with dpg.tab_bar(tag=self.tag, parent=parent):
+        with dpg.tab_bar(parent=parent, **self.tag_kwargs()):
             for panel in self.panels:
                 panel.render()
 
@@ -59,4 +70,4 @@ class Toolbar(UIComponent):
 
     def render_group(self, parent: str | int | None = None) -> Any:
         """Create the toolbar container and return its tag for child widgets."""
-        return dpg.group(horizontal=True, parent=parent, tag=self.tag)
+        return dpg.group(horizontal=True, parent=parent, **self.tag_kwargs())

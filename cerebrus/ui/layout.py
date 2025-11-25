@@ -17,7 +17,7 @@ class MenuBar(Toolbar):
     """Top-level application menu bar."""
 
     def render(self, parent: str | int | None = None) -> None:
-        with dpg.menu_bar(parent=parent, tag=self.tag):
+        with dpg.menu_bar(parent=parent, **self.tag_kwargs()):
             with dpg.menu(label="File"):
                 dpg.add_menu_item(label="Open Profile")
                 dpg.add_menu_item(label="Save")
