@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from cerebrus.config.models import CerebrusConfig
 from cerebrus.core.logging import get_logger
