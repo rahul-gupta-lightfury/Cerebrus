@@ -63,18 +63,18 @@ Adjust this layout as the project evolves, but keep documentation in sync.
 
    Keep `requirements.txt` minimal and reproducible. Prefer exact versions for tooling that affects profiling reports.
 
-4. **Run the toolkit scaffold**
+4. **Run the DearPyGui UI**
 
-   The repository now includes a minimal bootstrap that wires the configuration
-   loader, cache manager, device manager, and UI panels together. Run it with:
+   The repository now includes a runnable DearPyGui interface that mirrors the
+   sketch attached to the task. Launch it with:
 
    ```bash
    python -m cerebrus
    ```
 
-   The scaffold logs panel activity and validates that configuration and cache
-   directories are wired correctly. It does **not** yet render a full Dear ImGui
-   experience, but it establishes the application lifecycle for follow-up work.
+   The window opens with a menu bar, profile summary fields, device listing
+   controls, and placeholders for log copying, CSV exports, and report
+   generation. Use the **List Devices** button to populate sample rows.
 
 5. **(Optional) Configure tool paths**
 
