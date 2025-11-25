@@ -49,7 +49,7 @@ Before running the full suite, keep local changes aligned with CI by executing:
 black --check .
 isort --check-only .
 mypy cerebrus
-python -m cerebrus.core.preflight --config config/cerebrus.yaml
+python -m cerebrus.core.preflight
 ```
 
 Optional flags:

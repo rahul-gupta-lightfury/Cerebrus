@@ -11,7 +11,7 @@ This guide lists common issues and suggested resolutions.
   - **Remedy**:
     - Temporarily disable real-time scanning during install.
     - Run installer again.
-    - For manual install, verify `py -3` is available on PATH.
+    - For manual install, verify `python` is available on PATH. And `python --version` return value > 3.11.
 
 ## External Tools Not Found
 
