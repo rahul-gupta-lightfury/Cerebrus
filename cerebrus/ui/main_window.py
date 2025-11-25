@@ -27,12 +27,14 @@ class CerebrusUI:
         self.profile_bar = ProfileBar(state=self.state, tag="profile_bar")
         self.tabs = ContentTabs(state=self.state)
         self.icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.png"
+        self.window_alias = "cerebrus_window"
+        self.window_tag = dpg.generate_uuid()
 
     def _create_viewport(self) -> None:
         LOGGER.info("Creating viewport for Cerebrus window")
         dpg.create_context()
         dpg.create_viewport(
-            title="Cerebrus",
+            title="Cerebrus Perf Report UE Toolkit",
             width=1600,
             height=900,
             small_icon=str(self.icon_path),
@@ -40,11 +42,17 @@ class CerebrusUI:
         )
 
     def _render_window(self) -> None:
-        with dpg.window(tag="cerebrus_window", label="Cerebrus", width=1580, height=880):
+        with dpg.window(
+            tag=self.window_tag,
+            alias=self.window_alias,
+            label="Cerebrus Perf Report UE Toolkit",
+            width=1580,
+            height=880,
+        ):
             self.menu_bar.render()
             self.profile_bar.render()
             self.tabs.render()
-        dpg.set_primary_window("cerebrus_window", True)
+        dpg.set_primary_window(self.window_tag, True)
 
     def render_once(self) -> None:
         """Render and run the Cerebrus DearPyGui UI."""
