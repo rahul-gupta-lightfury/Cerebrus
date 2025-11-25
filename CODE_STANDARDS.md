@@ -26,7 +26,7 @@ This document defines the baseline coding standards for all Python and configura
   - `cerebrus/ui` – Dear ImGui UI only; no direct process spawning.
   - `cerebrus/tools` – thin wrappers around external tools (UAFT, CsvTools, PerfReportTool, etc.).
   - `cerebrus/config` – configuration loading, schema validation, and profile management.
-  - `cerebrus/cache` – cache operations and clean-up routines.
+- `cerebrus/cache` – cache operations and clean-up routines.
   - `cerebrus/installers` – installer logic and environment checks.
   - `tests` – mirrors source layout.
 
@@ -106,6 +106,20 @@ No module in `ui` may import `subprocess` or call external tools directly; this 
   - `isort` for import ordering.
   - `mypy` for static type checking.
   - `flake8` or `ruff` for linting (config to be added).
+
+## Cache Management
+
+- Use `cerebrus.cache.CacheManager` for any file-system level cache handling.
+- Respect `CacheConfig.max_entries` when writing cache helpers; avoid unbounded growth.
+- New cache logic must include unit tests under `tests/cache/`.
+
+## CI Expectations
+
+- GitHub Actions runs three distinct steps:
+  - **Lint** (`black --check`, `isort --check-only`, `mypy`).
+  - **Preflight** (`python -m cerebrus.core.preflight`) to validate configuration wiring and cache creation.
+  - **Unit tests** (`pytest`).
+- Keep local changes aligned with these checks to avoid CI regressions.
 
 All new code should pass the standard format and lint checks.
 
