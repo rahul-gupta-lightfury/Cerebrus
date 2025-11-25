@@ -28,6 +28,7 @@ class UIState:
             ("WARNING", "High memory usage detected during capture"),
             ("ERROR", "Missing frame timing data in CSV"),
             ("DEBUG", "Parsing CSV input directory"),
+            ("SUCCESS", "Logging with colors successful"),
         ]
     )
     log_filter: str = ""
