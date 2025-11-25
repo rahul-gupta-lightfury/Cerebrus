@@ -8,9 +8,11 @@ The configuration system provides structured access to:
 
 ## Configuration Files
 
-All configuration currently lives in `config/cerebrus.yaml`. The file bundles
-tool paths, cache configuration, and profile definitions into a single
-schema-validated document:
+Defaults are baked into the application, so no configuration file is required
+to launch the UI scaffold. When you do want to point Cerebrus at real Unreal
+Engine tooling, create `config/cerebrus.yaml` to bundle tool paths, cache
+configuration, and profile definitions into a single schema-validated
+document:
 
 ```yaml
 version: 1

@@ -28,11 +28,12 @@ class CerebrusUI:
         self.tabs = ContentTabs(state=self.state)
         self.icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.png"
         self.window_alias = "cerebrus_window"
-        self.window_tag = dpg.generate_uuid()
+        self.window_tag: int | None = None
 
     def _create_viewport(self) -> None:
         LOGGER.info("Creating viewport for Cerebrus window")
         dpg.create_context()
+        self.window_tag = dpg.generate_uuid()
         dpg.create_viewport(
             title="Cerebrus Perf Report UE Toolkit",
             width=1600,
@@ -42,6 +43,10 @@ class CerebrusUI:
         )
 
     def _render_window(self) -> None:
+        if self.window_tag is None:
+            msg = "Viewport must be created before rendering the window"
+            raise RuntimeError(msg)
+
         with dpg.window(
             tag=self.window_tag,
             alias=self.window_alias,

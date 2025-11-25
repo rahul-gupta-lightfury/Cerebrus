@@ -13,7 +13,7 @@ def main() -> int:
     """Bootstrap the Cerebrus application scaffold."""
     configure_logging()
     loader = ConfigLoader()
-    config = loader.load(Path("config/cerebrus.yaml"))
+    config = loader.load()
     app = CerebrusApp(config=config)
     app.initialize()
     app.run()
