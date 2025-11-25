@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import dearpygui.dearpygui as dpg
 
-from cerebrus.ui.state import DeviceInfo, UIState
+from cerebrus.core.devices import DeviceInfo, collect_device_info
+from cerebrus.ui.state import UIState
 
 
 MENU_LABELS = ["File", "View", "Tools", "Profile", "Settings", "Help"]
@@ -59,7 +60,9 @@ def build_file_actions(state: UIState) -> None:
 
 
 def _populate_devices(state: UIState) -> None:
-    state.sample_devices()
+    package_value = dpg.get_value("package_input") if dpg.does_item_exist("package_input") else ""
+    state.package_name = package_value or ""
+    state.devices = collect_device_info(state.package_name)
     _refresh_device_table(state)
 
 
