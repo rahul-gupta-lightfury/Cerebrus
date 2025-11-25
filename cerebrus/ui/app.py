@@ -28,13 +28,14 @@ class CerebrusApp:
 
     def run(self) -> None:
         self.build()
-        icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon16x16.ico"
+        small_icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon64x64.ico"
+        large_icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon256x256.ico"
         dpg.create_viewport(
             title="Cerebrus",
             width=1200,
             height=800,
-            small_icon=str(icon_path),
-            large_icon=str(icon_path),
+            small_icon=str(small_icon_path),
+            large_icon=str(large_icon_path),
         )
         dpg.setup_dearpygui()
         dpg.show_viewport()
