@@ -18,3 +18,16 @@ class UIState:
     copy_directory: Path = Path("/path/to/copy")
     date_string: str = "2024-01-01"
     device_cell_tags: list[list[str]] = field(default_factory=list)
+    output_file_name: str = "perf_report"
+    use_prefix_only: bool = False
+    input_path: Path = Path("/path/to/input")
+    output_path: Path = Path("/path/to/output")
+    logs: list[tuple[str, str]] = field(
+        default_factory=lambda: [
+            ("INFO", "Performance report initialized"),
+            ("WARNING", "High memory usage detected during capture"),
+            ("ERROR", "Missing frame timing data in CSV"),
+            ("DEBUG", "Parsing CSV input directory"),
+        ]
+    )
+    log_filter: str = ""

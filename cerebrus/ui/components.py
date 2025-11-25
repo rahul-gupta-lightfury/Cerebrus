@@ -7,6 +7,12 @@ from cerebrus.core.devices import DeviceInfo, collect_device_info
 from cerebrus.ui.state import UIState
 
 SELECTED_ROW_COLOR = (70, 130, 200, 90)
+LOG_LEVEL_COLORS = {
+    "DEBUG": (170, 170, 170),
+    "INFO": (120, 200, 255),
+    "WARNING": (255, 210, 120),
+    "ERROR": (255, 120, 120),
+}
 
 
 def build_menu_bar() -> None:
@@ -99,8 +105,53 @@ def build_file_actions(state: UIState) -> None:
             dpg.add_button(label="Browse", width=100)
 
     dpg.add_separator()
-    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=100):
+    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=260):
         dpg.add_text("Perf Report", color=(120, 180, 255))
+        with dpg.group(horizontal=True, horizontal_spacing=10):
+            dpg.add_text("Output file Name:")
+            dpg.add_input_text(
+                tag="output_file_name",
+                default_value=state.output_file_name,
+                width=200,
+            )
+            dpg.add_checkbox(
+                tag="use_prefix_only",
+                label="Use as Prefix only",
+                default_value=state.use_prefix_only,
+            )
+
+        with dpg.group(horizontal=True, horizontal_spacing=10):
+            dpg.add_text("Input File/Folder Path:")
+            dpg.add_input_text(
+                tag="input_path_label",
+                default_value=str(state.input_path),
+                width=350,
+                readonly=True,
+            )
+            dpg.add_button(label="Browse", width=100)
+
+        with dpg.group(horizontal=True, horizontal_spacing=10):
+            dpg.add_text("Output Folder Path:")
+            dpg.add_input_text(
+                tag="output_path_label",
+                default_value=str(state.output_path),
+                width=350,
+                readonly=True,
+            )
+            dpg.add_button(label="Browse", width=100)
+
+        dpg.add_separator()
+
+        dpg.add_text("Logging", color=(120, 180, 255))
+        dpg.add_input_text(
+            tag="log_filter_input",
+            label="Filter",
+            width=280,
+            callback=_handle_log_filter,
+            user_data=state,
+        )
+        with dpg.child_window(border=True, autosize_x=True, height=130, tag="log_container"):
+            _render_log_entries(state)
 
 
 def _populate_devices(state: UIState) -> None:
@@ -108,6 +159,36 @@ def _populate_devices(state: UIState) -> None:
     state.package_name = package_value or ""
     state.devices = collect_device_info(state.package_name)
     _refresh_device_table(state)
+
+
+def _handle_log_filter(sender: int, app_data: str, user_data: UIState) -> None:
+    user_data.log_filter = app_data or ""
+    _render_log_entries(user_data)
+
+
+def _render_log_entries(state: UIState) -> None:
+    if not dpg.does_item_exist("log_container"):
+        return
+
+    dpg.delete_item("log_container", children_only=True)
+    filter_value = state.log_filter.lower()
+    filtered_logs = [
+        entry
+        for entry in state.logs
+        if filter_value in entry[0].lower() or filter_value in entry[1].lower()
+    ]
+
+    if not filtered_logs:
+        dpg.add_text(
+            "No log entries match the filter.",
+            color=(180, 180, 180),
+            parent="log_container",
+        )
+        return
+
+    for level, message in filtered_logs:
+        color = LOG_LEVEL_COLORS.get(level.upper(), (220, 220, 220))
+        dpg.add_text(f"[{level}] {message}", color=color, parent="log_container")
 
 
 def _refresh_device_table(state: UIState) -> None:
