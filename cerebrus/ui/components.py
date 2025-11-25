@@ -85,23 +85,22 @@ def build_device_controls(state: UIState) -> None:
 
 
 def build_file_actions(state: UIState) -> None:
-    """Render the date, copy actions, and report trigger."""
+    """Render file copy actions and reporting panels."""
     dpg.add_separator()
-    with dpg.group(horizontal=True, horizontal_spacing=10):
-        dpg.add_text("Date:")
-        dpg.add_input_text(default_value=state.date_string, width=120)
-        dpg.add_button(label="Copy logs", width=100)
-        dpg.add_button(label="Copy CSV data", width=120)
-        dpg.add_button(label="Copy CSV data", width=120)
-        dpg.add_text("->")
-        dpg.add_button(label="Browse", width=100)
+    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=140):
+        dpg.add_text("Data", color=(120, 180, 255))
+        with dpg.group(horizontal=True, horizontal_spacing=10):
+            dpg.add_button(label="Copy logs", width=120)
+            dpg.add_button(label="Copy CSV data", width=140)
 
-    with dpg.group(horizontal=True, horizontal_spacing=10):
-        dpg.add_text("Copy Dir:")
-        dpg.add_input_text(default_value=str(state.copy_directory), width=350)
-        dpg.add_button(label="Browse", width=100)
+        with dpg.group(horizontal=True, horizontal_spacing=10):
+            dpg.add_text("Copy Location:")
+            dpg.add_input_text(default_value=str(state.copy_directory), width=350)
+            dpg.add_button(label="Browse", width=100)
 
-    dpg.add_button(label="Text Report", width=120)
+    dpg.add_separator()
+    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=100):
+        dpg.add_text("Perf Report", color=(120, 180, 255))
 
 
 def _populate_devices(state: UIState) -> None:
@@ -143,6 +142,8 @@ def _render_device_table(state: UIState) -> None:
         ]:
             dpg.add_table_column(label=column)
 
+        state.device_cell_tags = []
+
         if not state.devices:
             with dpg.table_row():
                 for message in ["-", "-", "No devices listed", "-", "-", "-"]:
@@ -162,16 +163,23 @@ def _render_device_row(row_index: int, device: DeviceInfo, state: UIState) -> No
             device.sdk_level,
             "True" if device.package_found else "False",
         ]
-        for value in values:
+
+        row_tags: list[str] = []
+        for column_index, value in enumerate(values):
+            cell_tag = f"device_cell_{row_index}_{column_index}"
             dpg.add_selectable(
+                tag=cell_tag,
                 label=value,
                 span_columns=False,
                 callback=_handle_device_select,
                 user_data=(state, row_index, device.serial),
             )
+            row_tags.append(cell_tag)
+
+        state.device_cell_tags.append(row_tags)
 
     if state.selected_device_serial == device.serial:
-        dpg.highlight_table_row("device_table", row_index, SELECTED_ROW_COLOR)
+        _select_device_row(row_index, state)
 
 
 def _handle_device_select(sender: int, app_data: int, user_data: tuple[UIState, int, str]) -> None:
@@ -180,8 +188,21 @@ def _handle_device_select(sender: int, app_data: int, user_data: tuple[UIState, 
 
     if not dpg.does_item_exist("device_table"):
         return
+    _select_device_row(row_index, state)
 
+
+def _select_device_row(row_index: int, state: UIState) -> None:
     for index in range(len(state.devices)):
         dpg.unhighlight_table_row("device_table", index)
 
     dpg.highlight_table_row("device_table", row_index, SELECTED_ROW_COLOR)
+
+    for cell_tags in state.device_cell_tags:
+        for tag in cell_tags:
+            if dpg.does_item_exist(tag):
+                dpg.set_value(tag, False)
+
+    if 0 <= row_index < len(state.device_cell_tags):
+        for tag in state.device_cell_tags[row_index]:
+            if dpg.does_item_exist(tag):
+                dpg.set_value(tag, True)

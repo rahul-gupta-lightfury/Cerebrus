@@ -17,3 +17,4 @@ class UIState:
     selected_device_serial: str | None = None
     copy_directory: Path = Path("/path/to/copy")
     date_string: str = "2024-01-01"
+    device_cell_tags: list[list[str]] = field(default_factory=list)

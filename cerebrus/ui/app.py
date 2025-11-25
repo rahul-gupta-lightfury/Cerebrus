@@ -28,7 +28,7 @@ class CerebrusApp:
 
     def run(self) -> None:
         self.build()
-        icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.png"
+        icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon16x16.ico"
         dpg.create_viewport(
             title="Cerebrus",
             width=1200,
