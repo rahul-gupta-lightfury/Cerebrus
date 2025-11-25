@@ -15,7 +15,7 @@ class CerebrusApp:
 
     def build(self) -> None:
         dpg.create_context()
-        self.state.package_name = "com.example.package"
+        self.state.package_name = "com.lightfury.titan"
         with dpg.window(tag="MainWindow", label="Cerebrus - An Unreal Engine Perf Report UI Toolkit", width=1100, height=750):
             components.build_menu_bar()
             components.build_profile_summary(self.state)
