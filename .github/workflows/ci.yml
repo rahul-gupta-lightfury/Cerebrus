@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+
+jobs:
+  build:
+    # Run on Windows to mirror the primary deployment environment
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint
+        run: |
+          black --check .
+          isort --check-only .
+          mypy cerebrus
+
+      - name: Preflight
+        run: |
+          python -m cerebrus.core.preflight --config config/cerebrus.yaml
+
+      - name: Unit tests
+        run: |
+          pytest

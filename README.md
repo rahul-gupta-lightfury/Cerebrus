@@ -100,6 +100,30 @@ Adjust this layout as the project evolves, but keep documentation in sync.
    directories are wired correctly. It does **not** yet render a full Dear ImGui
    experience, but it establishes the application lifecycle for follow-up work.
 
+6. **Run preflight checks**
+
+   Use the preflight helper to verify configuration wiring and cache creation
+   without launching the UI:
+
+   ```bash
+   python -m cerebrus.core.preflight --config config/cerebrus.yaml
+   ```
+
+   If `config/cerebrus.yaml` is missing, the defaults will be used and a local
+   `.cerebrus-cache` folder will be created or refreshed.
+
+## Continuous Integration
+
+GitHub Actions enforces three separate steps on pushes and pull requests:
+
+1. **Lint** — `black --check`, `isort --check-only`, and `mypy` over the
+   `cerebrus` package.
+2. **Preflight** — `python -m cerebrus.core.preflight --config config/cerebrus.yaml`
+   to ensure configuration files parse and cache directories can be created.
+3. **Unit tests** — `pytest`.
+
+Keep local changes aligned with these commands to avoid CI regressions.
+
 ## Working With Codex
 
 Codex is the code-generation and refactoring engine for this repository. To keep changes deterministic:
