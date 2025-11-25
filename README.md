@@ -63,31 +63,7 @@ Adjust this layout as the project evolves, but keep documentation in sync.
 
    Keep `requirements.txt` minimal and reproducible. Prefer exact versions for tooling that affects profiling reports.
 
-4. **Configure Unreal-Tool Paths**
-
-   Update `config/cerebrus.yaml` so that it points to your Unreal Engine
-   installation binaries and declares at least one profiling profile:
-
-   ```yaml
-   version: 1
-   tool_paths:
-     uaft: E:/DonE/git/UE57/Engine/Binaries/Win64/UAFT.exe
-     csvtools_root: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools
-     perfreporttool: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
-   cache:
-     directory: .cerebrus-cache
-   profiles:
-     - name: default
-       report_type: summary
-       csv_filters:
-         - stat=Unit
-   ```
-
-   The configuration loader validates this file on startup and injects defaults
-   if the file is missing. Cerebrus wrappers consume the resolved paths rather
-   than hardcoding anything.
-
-5. **Run the toolkit scaffold**
+4. **Run the toolkit scaffold**
 
    The repository now includes a minimal bootstrap that wires the configuration
    loader, cache manager, device manager, and UI panels together. Run it with:
@@ -99,6 +75,14 @@ Adjust this layout as the project evolves, but keep documentation in sync.
    The scaffold logs panel activity and validates that configuration and cache
    directories are wired correctly. It does **not** yet render a full Dear ImGui
    experience, but it establishes the application lifecycle for follow-up work.
+
+5. **(Optional) Configure tool paths**
+
+   The application ships with built-in defaults so you can launch the UI
+   without creating a configuration file. If you want to point Cerebrus at
+   specific Unreal Engine tooling later, create `config/cerebrus.yaml` and
+   populate the `tool_paths` block; otherwise you can skip this entirely. The
+   stubs will continue to use mocked device data until real paths are supplied.
 
 6. **Run preflight checks**
 

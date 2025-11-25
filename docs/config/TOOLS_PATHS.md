@@ -4,7 +4,10 @@ This document describes how to configure paths to external tools.
 
 ## Config File
 
-Use the `tool_paths` block inside `config/cerebrus.yaml` to specify paths:
+Use the `tool_paths` block inside `config/cerebrus.yaml` to specify paths. If no
+file is provided, Cerebrus falls back to defaults and keeps the mock
+device/workflow stubs active, so pointing at real Unreal Engine binaries is
+optional:
 
 ```yaml
 tool_paths:
