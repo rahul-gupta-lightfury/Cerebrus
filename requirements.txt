@@ -1,4 +1,3 @@
-imgui[bundled]
 dearpygui
 psutil
 pywin32
