@@ -7,25 +7,16 @@ from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
-from cerebrus.core.device_manager import DeviceManager
 from cerebrus.core.logging import get_logger
-from cerebrus.core.state import ApplicationState
-from cerebrus.ui.layout import ContentTabs, MenuBar, ProfileBar
 
 LOGGER = get_logger(__name__)
 
 
 @dataclass
 class CerebrusUI:
-    """Composes the Cerebrus DearPyGui window."""
-
-    state: ApplicationState
-    device_manager: DeviceManager
+    """Composes a minimal Cerebrus DearPyGui window."""
 
     def __post_init__(self) -> None:
-        self.menu_bar = MenuBar(tag="cerebrus_menu")
-        self.profile_bar = ProfileBar(state=self.state, tag="profile_bar")
-        self.tabs = ContentTabs(state=self.state)
         self.icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.png"
         self.window_alias = "cerebrus_window"
         self.window_tag: int | None = None
@@ -54,9 +45,9 @@ class CerebrusUI:
             width=1580,
             height=880,
         ):
-            self.menu_bar.render()
-            self.profile_bar.render()
-            self.tabs.render()
+            dpg.add_spacer(height=20)
+            dpg.add_text("Cerebrus UI placeholder")
+            dpg.add_text("This build intentionally removes all functionality while the UI shell is being set up.")
         dpg.set_primary_window(self.window_tag, True)
 
     def render_once(self) -> None:
