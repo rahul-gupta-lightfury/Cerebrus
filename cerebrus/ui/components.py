@@ -18,7 +18,7 @@ LOG_LEVEL_COLORS = {
 }
 
 
-def build_menu_bar() -> None:
+def build_menu_bar(state: UIState) -> None:
     """Render the top menu bar."""
     with dpg.menu_bar():
         with dpg.menu(label="File"):
@@ -32,10 +32,10 @@ def build_menu_bar() -> None:
             dpg.add_menu_item(label="Echo Test Command")
 
         with dpg.menu(label="Profile"):
-            dpg.add_menu_item(label="New")
-            dpg.add_menu_item(label="Open")
-            dpg.add_menu_item(label="Save")
-            dpg.add_menu_item(label="Edit")
+            dpg.add_menu_item(label="New", callback=lambda: _show_profile_dialog(state, is_edit=False))
+            dpg.add_menu_item(label="Open", callback=lambda: _show_file_dialog("open_profile_dialog"))
+            dpg.add_menu_item(label="Save", callback=lambda: _save_current_profile(state))
+            dpg.add_menu_item(label="Edit", callback=lambda: _show_profile_dialog(state, is_edit=True))
 
         with dpg.menu(label="Settings"):
             with dpg.menu(label="Load Theme"):
@@ -75,11 +75,18 @@ def build_profile_summary(state: UIState) -> None:
     """Render the profile summary strip with read-only inputs."""
     with dpg.group(horizontal=True, horizontal_spacing=12):
         dpg.add_text("Profile:")
-        dpg.add_input_text(default_value=state.profile_nickname, width=120, readonly=True)
+        dpg.add_input_text(tag="profile_nickname_input", default_value=state.profile_nickname, width=120, readonly=True)
         dpg.add_text("ProfilePath:")
-        dpg.add_input_text(default_value=str(state.profile_path), width=250, readonly=True)
+        dpg.add_input_text(tag="profile_path_input", default_value=str(state.profile_path), width=250, readonly=True)
         dpg.add_text("Package Name:")
-        dpg.add_input_text(tag="package_input", default_value=state.package_name, width=180)
+        dpg.add_input_text(
+            tag="package_input",
+            default_value=state.package_name,
+            width=180,
+            readonly=True,
+        )
+        # Initial width adjustment for profile path
+        _update_profile_path_display(state.profile_path)
 
 
 def build_device_controls(state: UIState) -> None:
@@ -99,9 +106,9 @@ def build_file_actions(state: UIState) -> None:
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=240):
         dpg.add_text("Data and Perf Report", color=(120, 180, 255))
         with dpg.table(header_row=False, policy=dpg.mvTable_SizingStretchProp):
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=0.3)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=300)
             dpg.add_table_column(init_width_or_weight=1)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=0.4)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=200)
 
             with dpg.table_row():
                 dpg.add_text("Output file Name:")
@@ -348,6 +355,19 @@ def _register_file_dialogs(state: UIState) -> None:
         ):
             dpg.add_file_extension(".*")
 
+    if not dpg.does_item_exist("open_profile_dialog"):
+        with dpg.file_dialog(
+            directory_selector=False,
+            show=False,
+            callback=_handle_open_profile_selected,
+            user_data=state,
+            tag="open_profile_dialog",
+            width=600,
+            height=400,
+        ):
+            dpg.add_file_extension(".json", color=(0, 255, 0, 255))
+            dpg.add_file_extension(".*")
+
 
 def _handle_input_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
     selection = next(iter(app_data.get("selections", {}).values()), None)
@@ -359,6 +379,11 @@ def _handle_input_path_selected(sender: int, app_data: dict, user_data: UIState)
         dpg.set_value("input_path_label", str(selection))
 
 
+    user_data.output_path = Path(selection)
+    if dpg.does_item_exist("output_path_label"):
+        dpg.set_value("output_path_label", str(selection))
+
+
 def _handle_output_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
     selection = app_data.get("file_path_name") or next(iter(app_data.get("selections", {}).values()), None)
     if selection is None:
@@ -367,3 +392,221 @@ def _handle_output_path_selected(sender: int, app_data: dict, user_data: UIState
     user_data.output_path = Path(selection)
     if dpg.does_item_exist("output_path_label"):
         dpg.set_value("output_path_label", str(selection))
+
+
+def _handle_package_name_change(sender: int, app_data: str, user_data: UIState) -> None:
+    user_data.package_name = app_data
+    # Validation logic
+    if not app_data.startswith("com."):
+        # We could show an error, or just let it be invalid until save?
+        # User said "cannot be null and must start with com."
+        # We can change text color to red if invalid?
+        dpg.configure_item(sender, user_data=user_data) # Trigger update?
+        pass
+
+
+def _show_profile_dialog(state: UIState, is_edit: bool = False) -> None:
+    if is_edit:
+        # Check if default profile
+        if not state.profile_manager.current_profile_path:
+             # Show warning
+             if not dpg.does_item_exist("default_profile_warning"):
+                 with dpg.window(tag="default_profile_warning", label="Warning", modal=True, width=400, height=150):
+                     dpg.add_text("Cannot edit the Default Profile.\nPlease create a New Profile or Open an existing one.")
+                     dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item("default_profile_warning"))
+             return
+
+    if dpg.does_item_exist("profile_dialog"):
+        dpg.delete_item("profile_dialog")
+
+    title = "Edit Profile" if is_edit else "New Profile"
+    
+    # Pre-fill values if editing
+    profile = state.profile_manager.current_profile
+    engine_root = profile.engine_root if is_edit and profile else ""
+    project_root = profile.project_root if is_edit and profile else ""
+    nickname = profile.nickname if is_edit and profile else ""
+    package_name = state.package_name if is_edit else ""
+
+    with dpg.window(tag="profile_dialog", label=title, modal=True, width=500, height=250):
+        with dpg.table(header_row=False, policy=dpg.mvTable_SizingStretchProp):
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=100)
+            dpg.add_table_column(init_width_or_weight=1)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=50)
+
+            with dpg.table_row():
+                dpg.add_text("Profile Name:")
+                dpg.add_input_text(tag="pd_nickname", default_value=nickname or "")
+                dpg.add_spacer()
+
+            with dpg.table_row():
+                dpg.add_text("Package Name:")
+                dpg.add_input_text(tag="pd_package_name", default_value=package_name)
+                dpg.add_spacer()
+
+        dpg.add_separator()
+        with dpg.group(horizontal=True):
+            dpg.add_button(label="Save", callback=lambda: _handle_profile_save(state))
+            dpg.add_button(label="Cancel", callback=lambda: dpg.delete_item("profile_dialog"))
+    
+    # Register dialogs for this modal
+    _register_profile_file_dialogs(state)
+
+
+def _handle_profile_save(state: UIState) -> None:
+    package_name = dpg.get_value("pd_package_name")
+    nickname = dpg.get_value("pd_nickname")
+
+    # Validation
+    if not package_name.startswith("com."):
+        # Show error
+        # For now just print or ignore
+        print("Invalid Package Name") 
+        return
+
+    # If new, we need a path to save to. 
+    # For now, let's just save to a default location or ask?
+    # The reference image doesn't show a path selector for the profile itself, 
+    # but "Profile Path" is in the main UI.
+    # If "New", we probably need to ask where to save the JSON.
+    
+    # Let's close the dialog and ask for save location if it's new.
+    # Or if it's edit, just save.
+    
+    dpg.delete_item("profile_dialog")
+    
+    # Update state
+    state.package_name = package_name
+    if dpg.does_item_exist("package_input"):
+        dpg.set_value("package_input", package_name)
+    
+    # Create/Update profile object
+    # If we don't have a current profile path, we need to ask for one.
+    if not state.profile_manager.current_profile_path:
+         _show_file_dialog("save_profile_as_dialog")
+         # We need to store the temp values somewhere to save them after path selection
+         state.temp_profile_data = {
+             "nickname": nickname,
+             "package_name": package_name,
+         }
+    else:
+        # Update existing
+        profile = state.profile_manager.current_profile
+        if profile:
+            profile.nickname = nickname
+            profile.package_name = package_name
+            state.profile_manager.save_current_profile()
+            state.profile_nickname = nickname or "None"
+            # Refresh UI
+            if dpg.does_item_exist("profile_nickname_input"):
+                dpg.set_value("profile_nickname_input", state.profile_nickname)
+            pass
+
+
+def _save_current_profile(state: UIState) -> None:
+    if state.profile_manager.current_profile and state.profile_manager.current_profile_path:
+        # Update profile from current UI state
+        state.profile_manager.current_profile.package_name = state.package_name
+        # Update other fields if we track them
+        state.profile_manager.save_current_profile()
+    else:
+        _show_file_dialog("save_profile_as_dialog")
+
+
+def _register_profile_file_dialogs(state: UIState) -> None:
+    if not dpg.does_item_exist("save_profile_as_dialog"):
+        with dpg.file_dialog(
+            directory_selector=False,
+            show=False,
+            callback=_handle_save_profile_as_selected,
+            user_data=state,
+            tag="save_profile_as_dialog",
+            width=500,
+            height=400,
+            default_filename="profile.json",
+        ):
+             dpg.add_file_extension(".json", color=(0, 255, 0, 255))
+
+
+def _handle_save_profile_as_selected(sender: int, app_data: dict, user_data: UIState) -> None:
+    selection = app_data.get("file_path_name") or next(iter(app_data.get("selections", {}).values()), None)
+    if not selection:
+        return
+    
+    path = Path(selection)
+    if not path.suffix:
+        path = path.with_suffix(".json")
+    
+    # Retrieve temp data if we came from the dialog
+    temp_data = getattr(user_data, "temp_profile_data", {})
+    
+    nickname = temp_data.get("nickname")
+    package_name = temp_data.get("package_name") or user_data.package_name
+    
+    # Create profile
+    profile = user_data.profile_manager.create_new_profile(
+        nickname=nickname,
+        package_name=package_name,
+        path=path
+    )
+    profile.save(path)
+    
+    # Update UI
+    user_data.profile_nickname = nickname or "None"
+    user_data.package_name = package_name
+    user_data.profile_path = path
+    
+    if dpg.does_item_exist("profile_nickname_input"):
+        dpg.set_value("profile_nickname_input", nickname or "None")
+    if dpg.does_item_exist("profile_path_input"):
+        dpg.set_value("profile_path_input", str(path))
+        _update_profile_path_display(path)
+    if dpg.does_item_exist("package_input"):
+        dpg.set_value("package_input", package_name)
+
+
+def _handle_open_profile_selected(sender: int, app_data: dict, user_data: UIState) -> None:
+    selection = next(iter(app_data.get("selections", {}).values()), None)
+    if selection:
+        path = Path(selection)
+        try:
+            profile = user_data.profile_manager.load_last_profile() # Wait, this loads last. We want to load specific.
+            # We need a method to load specific in manager.
+            # Let's just load it manually here for now or add method to manager.
+            # Accessing private/internal logic of manager is okay-ish.
+            from cerebrus.core.profile import Profile
+            profile = Profile.load(path)
+            user_data.profile_manager.current_profile = profile
+            user_data.profile_manager.current_profile_path = path
+            user_data.profile_manager.set_last_used_profile_path(path)
+            
+            # Update UI
+            user_data.profile_nickname = profile.nickname or "None"
+            user_data.package_name = profile.package_name
+            user_data.profile_path = path
+            
+            if dpg.does_item_exist("package_input"):
+                dpg.set_value("package_input", profile.package_name)
+            
+            if dpg.does_item_exist("profile_nickname_input"):
+                dpg.set_value("profile_nickname_input", profile.nickname or "None")
+            
+            if dpg.does_item_exist("profile_path_input"):
+                dpg.set_value("profile_path_input", str(path))
+                _update_profile_path_display(path)
+            
+        except Exception as e:
+            print(f"Error loading profile: {e}")
+
+
+def _update_profile_path_display(path: Path) -> None:
+    if not dpg.does_item_exist("profile_path_input"):
+        return
+    
+    path_str = str(path)
+    # Approximate width: char count * 7 pixels (approx for default font) + padding
+    # Clamp between min and max if needed, or just let it grow.
+    new_width = max(250, len(path_str) * 7 + 20)
+    dpg.configure_item("profile_path_input", width=new_width)
+
+

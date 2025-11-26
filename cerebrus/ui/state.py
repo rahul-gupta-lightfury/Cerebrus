@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List
 
 from cerebrus.core.devices import DeviceInfo
+from cerebrus.core.profile import ProfileManager
 
 
 @dataclass
@@ -32,3 +33,4 @@ class UIState:
         ]
     )
     log_filter: str = ""
+    profile_manager: ProfileManager = field(default_factory=ProfileManager)

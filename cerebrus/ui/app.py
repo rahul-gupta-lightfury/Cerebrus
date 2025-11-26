@@ -14,12 +14,15 @@ class CerebrusApp:
 
     def __init__(self, state: UIState | None = None) -> None:
         self.state = state or UIState()
+        profile, path = self.state.profile_manager.load_last_profile()
+        self.state.profile_nickname = profile.nickname or "None"
+        self.state.package_name = profile.package_name
+        self.state.profile_path = path if path else Path("No profile loaded")
 
     def build(self) -> None:
         dpg.create_context()
-        self.state.package_name = "com.lightfury.titan"
         with dpg.window(tag="MainWindow", label="Cerebrus - An Unreal Engine Perf Report UI Toolkit", width=1100, height=750):
-            components.build_menu_bar()
+            components.build_menu_bar(self.state)
             components.build_profile_summary(self.state)
             components.build_device_controls(self.state)
             components.build_file_actions(self.state)
