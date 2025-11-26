@@ -96,29 +96,8 @@ def build_device_controls(state: UIState) -> None:
 def build_file_actions(state: UIState) -> None:
     """Render file copy actions and reporting panels."""
     dpg.add_separator()
-    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=140):
-        dpg.add_text("Data", color=(120, 180, 255))
-        with dpg.group(horizontal=True, horizontal_spacing=10):
-            dpg.add_button(label="Copy logs", width=120)
-            dpg.add_button(label="Copy CSV data", width=140)
-
-        with dpg.group(horizontal=True, horizontal_spacing=10):
-            dpg.add_text("Copy Location:")
-            dpg.add_input_text(
-                tag="copy_location_input",
-                default_value=str(state.copy_directory),
-                width=350,
-                readonly=True,
-            )
-            dpg.add_button(
-                label="Browse",
-                width=100,
-                callback=lambda: _show_file_dialog("copy_dir_dialog"),
-            )
-
-    dpg.add_separator()
-    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=190):
-        dpg.add_text("Perf Report", color=(120, 180, 255))
+    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=220):
+        dpg.add_text("Data and Perf Report", color=(120, 180, 255))
         with dpg.group(horizontal=True, horizontal_spacing=10):
             dpg.add_text("Output file Name:")
             dpg.add_input_text(
@@ -159,6 +138,10 @@ def build_file_actions(state: UIState) -> None:
                 width=100,
                 callback=lambda: _show_file_dialog("output_path_dialog"),
             )
+
+        with dpg.group(horizontal=True, horizontal_spacing=10):
+            dpg.add_button(label="Copy logs", width=120)
+            dpg.add_button(label="Copy CSV data", width=140)
 
     dpg.add_separator()
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=200):
@@ -317,18 +300,6 @@ def _show_file_dialog(tag: str) -> None:
 
 
 def _register_file_dialogs(state: UIState) -> None:
-    if not dpg.does_item_exist("copy_dir_dialog"):
-        with dpg.file_dialog(
-            directory_selector=True,
-            show=False,
-            callback=_handle_copy_dir_selected,
-            user_data=state,
-            tag="copy_dir_dialog",
-            width=500,
-            height=400,
-        ):
-            dpg.add_file_extension(".*")
-
     if not dpg.does_item_exist("input_path_dialog"):
         with dpg.file_dialog(
             directory_selector=False,
@@ -353,16 +324,6 @@ def _register_file_dialogs(state: UIState) -> None:
             height=400,
         ):
             dpg.add_file_extension(".*")
-
-
-def _handle_copy_dir_selected(sender: int, app_data: dict, user_data: UIState) -> None:
-    selection = next(iter(app_data.get("selections", {}).values()), None)
-    if selection is None:
-        return
-
-    user_data.copy_directory = Path(selection)
-    if dpg.does_item_exist("copy_location_input"):
-        dpg.set_value("copy_location_input", str(selection))
 
 
 def _handle_input_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
