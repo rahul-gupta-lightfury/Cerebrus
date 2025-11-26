@@ -114,6 +114,8 @@ def build_file_actions(state: UIState) -> None:
                     tag="use_prefix_only",
                     label="Use as Prefix only",
                     default_value=state.use_prefix_only,
+                    callback=_handle_use_prefix_toggle,
+                    user_data=state,
                 )
 
             with dpg.table_row():
@@ -186,6 +188,10 @@ def _populate_devices(state: UIState) -> None:
 def _handle_log_filter(sender: int, app_data: str, user_data: UIState) -> None:
     user_data.log_filter = app_data or ""
     _render_log_entries(user_data)
+
+
+def _handle_use_prefix_toggle(sender: int, app_data: bool, user_data: UIState) -> None:
+    user_data.use_prefix_only = bool(app_data)
 
 
 def _render_log_entries(state: UIState) -> None:
