@@ -29,12 +29,11 @@ def build_menu_bar(state: UIState) -> None:
             dpg.add_menu_item(label="Reset Layout")
 
         with dpg.menu(label="Tools"):
-            dpg.add_menu_item(label="Echo Test Command")
+            dpg.add_menu_item(label="Echo Test Command", callback=lambda: log_message(state, "INFO", "Echo Test Command Executed"))
 
         with dpg.menu(label="Profile"):
             dpg.add_menu_item(label="New", callback=lambda: _show_profile_dialog(state, is_edit=False))
             dpg.add_menu_item(label="Open", callback=lambda: _show_file_dialog("open_profile_dialog"))
-            dpg.add_menu_item(label="Save", callback=lambda: _save_current_profile(state))
             dpg.add_menu_item(label="Edit", callback=lambda: _show_profile_dialog(state, is_edit=True))
 
         with dpg.menu(label="Settings"):
@@ -74,19 +73,22 @@ def build_menu_bar(state: UIState) -> None:
 def build_profile_summary(state: UIState) -> None:
     """Render the profile summary strip with read-only inputs."""
     with dpg.group(horizontal=True, horizontal_spacing=12):
-        dpg.add_text("Profile:")
-        dpg.add_input_text(tag="profile_nickname_input", default_value=state.profile_nickname, width=120, readonly=True)
-        dpg.add_text("ProfilePath:")
-        dpg.add_input_text(tag="profile_path_input", default_value=str(state.profile_path), width=250, readonly=True)
+        dpg.add_text("Profile Name:")
+        # Use warning color for default profile, green for loaded profiles
+        profile_color = (255, 210, 120) if not state.profile_manager.current_profile_path else (150, 255, 150)
+        dpg.add_text(tag="profile_nickname_input", default_value=state.profile_nickname, color=profile_color)
+        dpg.add_text("Profile Path:")
+        dpg.add_text(tag="profile_path_input", default_value=str(state.profile_path), color=profile_color)
         dpg.add_text("Package Name:")
-        dpg.add_input_text(
+        dpg.add_text(
             tag="package_input",
             default_value=state.package_name,
-            width=180,
-            readonly=True,
+            color=profile_color,
         )
-        # Initial width adjustment for profile path
-        _update_profile_path_display(state.profile_path)
+        # Initial width adjustment for profile path - No longer needed for text labels as they auto-size? 
+        # But we might want to keep it if we want to truncate or something. 
+        # Text items auto-size, so we can remove the width adjustment logic or keep it if we wrap it.
+        # Let's remove the width adjustment call for now as text labels don't have 'width' in the same way.
 
 
 def build_device_controls(state: UIState) -> None:
@@ -172,13 +174,15 @@ def build_file_actions(state: UIState) -> None:
     dpg.add_separator()
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=200):
         dpg.add_text("Logging", color=(120, 180, 255))
-        dpg.add_input_text(
-            tag="log_filter_input",
-            label="Filter",
-            width=280,
-            callback=_handle_log_filter,
-            user_data=state,
-        )
+        with dpg.group(horizontal=True):
+            dpg.add_input_text(
+                tag="log_filter_input",
+                label="Filter",
+                width=280,
+                callback=_handle_log_filter,
+                user_data=state,
+            )
+            dpg.add_button(label="Clear", callback=lambda: _clear_logs(state))
         with dpg.child_window(border=True, autosize_x=True, height=130, tag="log_container"):
             _render_log_entries(state)
 
@@ -210,7 +214,7 @@ def _render_log_entries(state: UIState) -> None:
     filtered_logs = [
         entry
         for entry in state.logs
-        if filter_value in entry[0].lower() or filter_value in entry[1].lower()
+        if filter_value in entry[1].lower() or filter_value in entry[2].lower()
     ]
 
     if not filtered_logs:
@@ -221,9 +225,21 @@ def _render_log_entries(state: UIState) -> None:
         )
         return
 
-    for level, message in filtered_logs:
+    for timestamp, level, message in filtered_logs:
         color = LOG_LEVEL_COLORS.get(level.upper(), (220, 220, 220))
-        dpg.add_text(f"[{level}] {message}", color=color, parent="log_container")
+        dpg.add_text(f"[{timestamp}] [{level}] {message}", color=color, parent="log_container")
+
+
+def log_message(state: UIState, level: str, message: str) -> None:
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%d-%m-%y %H:%M:%S")
+    state.logs.append((timestamp, level, message))
+    _render_log_entries(state)
+
+
+def _clear_logs(state: UIState) -> None:
+    state.logs.clear()
+    _render_log_entries(state)
 
 
 def _refresh_device_table(state: UIState) -> None:
@@ -409,24 +425,33 @@ def _show_profile_dialog(state: UIState, is_edit: bool = False) -> None:
     if is_edit:
         # Check if default profile
         if not state.profile_manager.current_profile_path:
-             # Show warning
+             # Show warning and log it
+             log_message(state, "WARNING", "Cannot edit Default Profile. Please create a New Profile or Open an existing one.")
              if not dpg.does_item_exist("default_profile_warning"):
                  with dpg.window(tag="default_profile_warning", label="Warning", modal=True, width=400, height=150):
                      dpg.add_text("Cannot edit the Default Profile.\nPlease create a New Profile or Open an existing one.")
                      dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item("default_profile_warning"))
              return
+    else:
+        # Creating new profile
+        log_message(state, "INFO", "Opening New Profile dialog")
+        # Mark that we're creating a new profile
+        state.is_creating_new_profile = True
 
     if dpg.does_item_exist("profile_dialog"):
         dpg.delete_item("profile_dialog")
 
     title = "Edit Profile" if is_edit else "New Profile"
     
-    # Pre-fill values if editing
-    profile = state.profile_manager.current_profile
-    engine_root = profile.engine_root if is_edit and profile else ""
-    project_root = profile.project_root if is_edit and profile else ""
-    nickname = profile.nickname if is_edit and profile else ""
-    package_name = state.package_name if is_edit else ""
+    # Pre-fill values ONLY if editing an existing profile
+    if is_edit:
+        profile = state.profile_manager.current_profile
+        nickname = profile.nickname if profile else ""
+        package_name = state.package_name
+    else:
+        # For new profiles, start with empty values
+        nickname = ""
+        package_name = ""
 
     with dpg.window(tag="profile_dialog", label=title, modal=True, width=500, height=250):
         with dpg.table(header_row=False, policy=dpg.mvTable_SizingStretchProp):
@@ -446,22 +471,32 @@ def _show_profile_dialog(state: UIState, is_edit: bool = False) -> None:
 
         dpg.add_separator()
         with dpg.group(horizontal=True):
-            dpg.add_button(label="Save", callback=lambda: _handle_profile_save(state))
+            dpg.add_button(label="Save", callback=lambda: _handle_profile_save(state, is_edit))
             dpg.add_button(label="Cancel", callback=lambda: dpg.delete_item("profile_dialog"))
     
     # Register dialogs for this modal
     _register_profile_file_dialogs(state)
 
 
-def _handle_profile_save(state: UIState) -> None:
+def _handle_profile_save(state: UIState, is_edit: bool) -> None:
     package_name = dpg.get_value("pd_package_name")
     nickname = dpg.get_value("pd_nickname")
 
-    # Validation
+    # Enhanced validation for package name format: com.{company}.{product}
+    if not package_name:
+        log_message(state, "ERROR", "Package Name cannot be empty.")
+        return
+    
     if not package_name.startswith("com."):
-        # Show error
-        # For now just print or ignore
-        print("Invalid Package Name") 
+        log_message(state, "ERROR", f"Invalid Package Name: '{package_name}'. Package name must start with 'com.'")
+        log_message(state, "INFO", "Correct format: com.{{company}}.{{product}} (e.g., com.lightfury.titan)")
+        return
+    
+    # Check if it has at least 3 parts: com.company.product
+    parts = package_name.split(".")
+    if len(parts) < 3:
+        log_message(state, "ERROR", f"Invalid Package Name: '{package_name}'. Must have format: com.{{company}}.{{product}}")
+        log_message(state, "INFO", "Correct format: com.{{company}}.{{product}} (e.g., com.lightfury.titan)")
         return
 
     # If new, we need a path to save to. 
@@ -480,26 +515,33 @@ def _handle_profile_save(state: UIState) -> None:
     if dpg.does_item_exist("package_input"):
         dpg.set_value("package_input", package_name)
     
-    # Create/Update profile object
-    # If we don't have a current profile path, we need to ask for one.
-    if not state.profile_manager.current_profile_path:
-         _show_file_dialog("save_profile_as_dialog")
-         # We need to store the temp values somewhere to save them after path selection
-         state.temp_profile_data = {
-             "nickname": nickname,
-             "package_name": package_name,
-         }
+    # For NEW profiles, ALWAYS prompt for save location
+    # For EDIT, only prompt if no path exists (shouldn't happen but safety check)
+    if not is_edit or not state.profile_manager.current_profile_path:
+        # This is a new profile - prompt for location
+        # Store nickname for default filename
+        state.temp_profile_nickname_for_save = nickname if nickname else "profile"
+        _show_file_dialog("save_profile_as_dialog")
+        # Store the temp values to save after path selection
+        state.temp_profile_data = {
+            "nickname": nickname,
+            "package_name": package_name,
+        }
     else:
-        # Update existing
+        # Update existing profile
         profile = state.profile_manager.current_profile
         if profile:
             profile.nickname = nickname
             profile.package_name = package_name
             state.profile_manager.save_current_profile()
             state.profile_nickname = nickname or "None"
+            
+            log_message(state, "SUCCESS", f"Profile '{state.profile_nickname}' saved successfully.")
+
             # Refresh UI
             if dpg.does_item_exist("profile_nickname_input"):
                 dpg.set_value("profile_nickname_input", state.profile_nickname)
+            _update_profile_display_colors(state)
             pass
 
 
@@ -515,6 +557,10 @@ def _save_current_profile(state: UIState) -> None:
 
 def _register_profile_file_dialogs(state: UIState) -> None:
     if not dpg.does_item_exist("save_profile_as_dialog"):
+        # Get default filename from temp nickname if available
+        default_name = getattr(state, 'temp_profile_nickname_for_save', 'profile')
+        default_filename = f"{default_name}.json" if default_name else "profile.json"
+        
         with dpg.file_dialog(
             directory_selector=False,
             show=False,
@@ -523,7 +569,7 @@ def _register_profile_file_dialogs(state: UIState) -> None:
             tag="save_profile_as_dialog",
             width=500,
             height=400,
-            default_filename="profile.json",
+            default_filename=default_filename,
         ):
              dpg.add_file_extension(".json", color=(0, 255, 0, 255))
 
@@ -551,6 +597,8 @@ def _handle_save_profile_as_selected(sender: int, app_data: dict, user_data: UIS
     )
     profile.save(path)
     
+    log_message(user_data, "SUCCESS", f"New profile '{nickname}' created at {path}")
+
     # Update UI
     user_data.profile_nickname = nickname or "None"
     user_data.package_name = package_name
@@ -560,9 +608,11 @@ def _handle_save_profile_as_selected(sender: int, app_data: dict, user_data: UIS
         dpg.set_value("profile_nickname_input", nickname or "None")
     if dpg.does_item_exist("profile_path_input"):
         dpg.set_value("profile_path_input", str(path))
-        _update_profile_path_display(path)
+        # _update_profile_path_display(path) # Removed as we use labels now
     if dpg.does_item_exist("package_input"):
         dpg.set_value("package_input", package_name)
+    
+    _update_profile_display_colors(user_data)
 
 
 def _handle_open_profile_selected(sender: int, app_data: dict, user_data: UIState) -> None:
@@ -570,16 +620,19 @@ def _handle_open_profile_selected(sender: int, app_data: dict, user_data: UIStat
     if selection:
         path = Path(selection)
         try:
-            profile = user_data.profile_manager.load_last_profile() # Wait, this loads last. We want to load specific.
-            # We need a method to load specific in manager.
-            # Let's just load it manually here for now or add method to manager.
-            # Accessing private/internal logic of manager is okay-ish.
             from cerebrus.core.profile import Profile
             profile = Profile.load(path)
+            
+            # Validate that required fields exist
+            if not hasattr(profile, 'nickname') or not hasattr(profile, 'package_name'):
+                raise ValueError("Profile missing required fields")
+            
             user_data.profile_manager.current_profile = profile
             user_data.profile_manager.current_profile_path = path
             user_data.profile_manager.set_last_used_profile_path(path)
             
+            log_message(user_data, "SUCCESS", f"Profile loaded: {profile.nickname} from {path}")
+
             # Update UI
             user_data.profile_nickname = profile.nickname or "None"
             user_data.package_name = profile.package_name
@@ -593,20 +646,37 @@ def _handle_open_profile_selected(sender: int, app_data: dict, user_data: UIStat
             
             if dpg.does_item_exist("profile_path_input"):
                 dpg.set_value("profile_path_input", str(path))
-                _update_profile_path_display(path)
+                # _update_profile_path_display(path) # Removed
             
+            _update_profile_display_colors(user_data)
+            
+        except (ValueError, KeyError, TypeError) as e:
+            # Invalid profile schema
+            filename = path.name if path else "Unknown"
+            log_message(user_data, "ERROR", f"{filename} is not a valid Profile. Please create a new profile or open a valid existing profile.")
+            print(f"Error loading profile: {e}")
         except Exception as e:
+            # Other errors (file not found, JSON parse error, etc.)
+            filename = path.name if path else "Unknown"
+            log_message(user_data, "ERROR", f"Failed to load {filename}: {str(e)}")
             print(f"Error loading profile: {e}")
 
 
-def _update_profile_path_display(path: Path) -> None:
-    if not dpg.does_item_exist("profile_path_input"):
-        return
+def _update_profile_display_colors(state: UIState) -> None:
+    """Update the display colors for profile labels based on whether it's default or loaded."""
+    profile_color = (255, 210, 120) if not state.profile_manager.current_profile_path else (150, 255, 150)
     
-    path_str = str(path)
-    # Approximate width: char count * 7 pixels (approx for default font) + padding
-    # Clamp between min and max if needed, or just let it grow.
-    new_width = max(250, len(path_str) * 7 + 20)
-    dpg.configure_item("profile_path_input", width=new_width)
+    if dpg.does_item_exist("profile_nickname_input"):
+        dpg.configure_item("profile_nickname_input", color=profile_color)
+    if dpg.does_item_exist("profile_path_input"):
+        dpg.configure_item("profile_path_input", color=profile_color)
+    if dpg.does_item_exist("package_input"):
+        dpg.configure_item("package_input", color=profile_color)
 
+
+def _update_profile_path_display(path: Path) -> None:
+    # Deprecated/Unused for labels but kept if needed or just remove?
+    # User said "Should auto adjust the size for the complete path to be visible."
+    # Labels auto-adjust.
+    pass
 

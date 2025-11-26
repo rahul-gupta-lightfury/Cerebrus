@@ -12,13 +12,6 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 class Profile:
     nickname: Optional[str] = None
     package_name: str = ""
-    engine_root: str = ""
-    project_root: str = ""
-    # We can add more fields here as needed to persist UI state
-    input_path: str = ""
-    output_path: str = ""
-    output_file_name: str = ""
-    use_prefix_only: bool = False
 
     def validate(self) -> list[str]:
         errors = []
@@ -38,10 +31,10 @@ class Profile:
             raise FileNotFoundError(f"Profile not found at {path}")
         with open(path, "r") as f:
             data = json.load(f)
-        # Filter out keys that might not be in the dataclass anymore (forward compatibility)
-        # or handle missing keys (backward compatibility)
-        # For now, simple unpacking
-        return cls(**data)
+        # Filter to only use fields that exist in current Profile class (backward compatibility)
+        valid_fields = {'nickname', 'package_name'}
+        filtered_data = {k: v for k, v in data.items() if k in valid_fields}
+        return cls(**filtered_data)
 
 class ProfileManager:
     def __init__(self):

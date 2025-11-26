@@ -21,6 +21,9 @@ class CerebrusApp:
 
     def build(self) -> None:
         dpg.create_context()
+        components.log_message(self.state, "INFO", "Cerebrus App Loaded")
+        if self.state.profile_path and str(self.state.profile_path) != "No profile loaded":
+             components.log_message(self.state, "INFO", f"Last used profile loaded: {self.state.profile_nickname}")
         with dpg.window(tag="MainWindow", label="Cerebrus - An Unreal Engine Perf Report UI Toolkit", width=1100, height=750):
             components.build_menu_bar(self.state)
             components.build_profile_summary(self.state)

@@ -23,14 +23,6 @@ class UIState:
     use_prefix_only: bool = False
     input_path: Path = Path("/path/to/input")
     output_path: Path = Path("/path/to/output")
-    logs: list[tuple[str, str]] = field(
-        default_factory=lambda: [
-            ("INFO", "Performance report initialized"),
-            ("WARNING", "High memory usage detected during capture"),
-            ("ERROR", "Missing frame timing data in CSV"),
-            ("DEBUG", "Parsing CSV input directory"),
-            ("SUCCESS", "Logging with colors successful"),
-        ]
-    )
+    logs: list[tuple[str, str, str]] = field(default_factory=list)
     log_filter: str = ""
     profile_manager: ProfileManager = field(default_factory=ProfileManager)
