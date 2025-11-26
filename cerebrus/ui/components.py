@@ -99,19 +99,25 @@ def build_file_actions(state: UIState) -> None:
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=240):
         dpg.add_text("Data and Perf Report", color=(120, 180, 255))
         with dpg.table(header_row=False, policy=dpg.mvTable_SizingStretchProp):
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=0.35)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=0.3)
             dpg.add_table_column(init_width_or_weight=1)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=0.4)
 
             with dpg.table_row():
-                dpg.add_text("Output File Name Prefix:")
+                dpg.add_text("Output file Name:")
                 dpg.add_input_text(
                     tag="output_file_name",
                     default_value=state.output_file_name,
                     width=220,
                 )
+                dpg.add_checkbox(
+                    tag="use_prefix_only",
+                    label="Use as Prefix only",
+                    default_value=state.use_prefix_only,
+                )
 
             with dpg.table_row():
-                dpg.add_text("Copy Directory / Input File/Folder Path:")
+                dpg.add_text("Copy Directory /Input File/Folder Path:")
                 with dpg.group(horizontal=True, horizontal_spacing=8):
                     dpg.add_input_text(
                         tag="input_path_label",
@@ -124,6 +130,7 @@ def build_file_actions(state: UIState) -> None:
                         width=90,
                         callback=lambda: _show_file_dialog("input_path_dialog"),
                     )
+                dpg.add_spacer(width=10)
 
             with dpg.table_row():
                 dpg.add_text("Output Folder Path:")
@@ -139,6 +146,7 @@ def build_file_actions(state: UIState) -> None:
                         width=90,
                         callback=lambda: _show_file_dialog("output_path_dialog"),
                     )
+                dpg.add_spacer(width=10)
 
         with dpg.group(horizontal=True, horizontal_spacing=12):
             with dpg.child_window(border=True, autosize_y=True, width=260):
