@@ -108,16 +108,16 @@ def build_file_actions(state: UIState) -> None:
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=240):
         dpg.add_text("Data and Perf Report", color=(120, 180, 255))
         with dpg.table(header_row=False, policy=dpg.mvTable_SizingStretchProp):
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=300)
-            dpg.add_table_column(init_width_or_weight=1)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=200)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=250)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=350)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=180)
 
             with dpg.table_row():
                 dpg.add_text("Output file Name:")
                 dpg.add_input_text(
                     tag="output_file_name",
                     default_value=state.output_file_name,
-                    width=220,
+                    width=-1,
                 )
                 dpg.add_checkbox(
                     tag="use_prefix_only",
@@ -129,35 +129,31 @@ def build_file_actions(state: UIState) -> None:
 
             with dpg.table_row():
                 dpg.add_text("Copy Directory /Input File/Folder Path:")
-                with dpg.group(horizontal=True, horizontal_spacing=8):
-                    dpg.add_input_text(
-                        tag="input_path_label",
-                        default_value=str(state.input_path),
-                        width=320,
-                        readonly=True,
-                    )
-                    dpg.add_button(
-                        label="Browse",
-                        width=90,
-                        callback=lambda: _show_file_dialog("input_path_dialog"),
-                    )
-                dpg.add_spacer(width=10)
+                dpg.add_input_text(
+                    tag="input_path_label",
+                    default_value=str(state.input_path),
+                    width=-1,
+                    readonly=True,
+                )
+                dpg.add_button(
+                    label="Browse",
+                    width=-1,
+                    callback=lambda: _show_file_dialog("input_path_dialog"),
+                )
 
             with dpg.table_row():
                 dpg.add_text("Output Folder Path:")
-                with dpg.group(horizontal=True, horizontal_spacing=8):
-                    dpg.add_input_text(
-                        tag="output_path_label",
-                        default_value=str(state.output_path),
-                        width=320,
-                        readonly=True,
-                    )
-                    dpg.add_button(
-                        label="Browse",
-                        width=90,
-                        callback=lambda: _show_file_dialog("output_path_dialog"),
-                    )
-                dpg.add_spacer(width=10)
+                dpg.add_input_text(
+                    tag="output_path_label",
+                    default_value=str(state.output_path),
+                    width=-1,
+                    readonly=True,
+                )
+                dpg.add_button(
+                    label="Browse",
+                    width=-1,
+                    callback=lambda: _show_file_dialog("output_path_dialog"),
+                )
 
         with dpg.group(horizontal=True, horizontal_spacing=12):
             with dpg.child_window(border=True, autosize_y=True, width=260):
@@ -299,13 +295,22 @@ def _render_device_row(row_index: int, device: DeviceInfo, state: UIState) -> No
         row_tags: list[str] = []
         for column_index, value in enumerate(values):
             cell_tag = f"device_cell_{row_index}_{column_index}"
-            dpg.add_selectable(
-                tag=cell_tag,
-                label=value,
-                span_columns=False,
-                callback=_handle_device_select,
-                user_data=(state, row_index, device.serial),
-            )
+            # Color code the Package Found column (last column)
+            if column_index == len(values) - 1:  # Package Found column
+                if device.package_found:
+                    text_color = LOG_LEVEL_COLORS["SUCCESS"]  # Green
+                else:
+                    text_color = LOG_LEVEL_COLORS["ERROR"]  # Red
+                # Use text with color instead of selectable for this column
+                dpg.add_text(value, color=text_color, tag=cell_tag)
+            else:
+                dpg.add_selectable(
+                    tag=cell_tag,
+                    label=value,
+                    span_columns=False,
+                    callback=_handle_device_select,
+                    user_data=(state, row_index, device.serial),
+                )
             row_tags.append(cell_tag)
 
         state.device_cell_tags.append(row_tags)
@@ -330,13 +335,15 @@ def _select_device_row(row_index: int, state: UIState) -> None:
     dpg.highlight_table_row("device_table", row_index, SELECTED_ROW_COLOR)
 
     for cell_tags in state.device_cell_tags:
-        for tag in cell_tags:
-            if dpg.does_item_exist(tag):
+        for col_idx, tag in enumerate(cell_tags):
+            # Skip the last column (Package Found) as it's a text widget, not selectable
+            if col_idx < len(cell_tags) - 1 and dpg.does_item_exist(tag):
                 dpg.set_value(tag, False)
 
     if 0 <= row_index < len(state.device_cell_tags):
-        for tag in state.device_cell_tags[row_index]:
-            if dpg.does_item_exist(tag):
+        for col_idx, tag in enumerate(state.device_cell_tags[row_index]):
+            # Skip the last column (Package Found) as it's a text widget, not selectable
+            if col_idx < len(state.device_cell_tags[row_index]) - 1 and dpg.does_item_exist(tag):
                 dpg.set_value(tag, True)
 
 
@@ -348,7 +355,7 @@ def _show_file_dialog(tag: str) -> None:
 def _register_file_dialogs(state: UIState) -> None:
     if not dpg.does_item_exist("input_path_dialog"):
         with dpg.file_dialog(
-            directory_selector=False,
+            directory_selector=True,  # Allow directory selection
             show=False,
             callback=_handle_input_path_selected,
             user_data=state,
@@ -357,6 +364,7 @@ def _register_file_dialogs(state: UIState) -> None:
             height=400,
         ):
             dpg.add_file_extension(".csv", color=(0, 120, 255, 255))
+            dpg.add_file_extension(".txt", color=(120, 255, 120, 255))
             dpg.add_file_extension(".*")
 
     if not dpg.does_item_exist("output_path_dialog"):
