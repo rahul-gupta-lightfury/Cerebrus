@@ -96,52 +96,61 @@ def build_device_controls(state: UIState) -> None:
 def build_file_actions(state: UIState) -> None:
     """Render file copy actions and reporting panels."""
     dpg.add_separator()
-    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=220):
+    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=240):
         dpg.add_text("Data and Perf Report", color=(120, 180, 255))
-        with dpg.group(horizontal=True, horizontal_spacing=10):
-            dpg.add_text("Output file Name:")
-            dpg.add_input_text(
-                tag="output_file_name",
-                default_value=state.output_file_name,
-                width=200,
-            )
-            dpg.add_checkbox(
-                tag="use_prefix_only",
-                label="Use as Prefix only",
-                default_value=state.use_prefix_only,
-            )
+        with dpg.table(header_row=False, policy=dpg.mvTable_SizingStretchProp):
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=0.35)
+            dpg.add_table_column(init_width_or_weight=1)
 
-        with dpg.group(horizontal=True, horizontal_spacing=10):
-            dpg.add_text("Input File/Folder Path:")
-            dpg.add_input_text(
-                tag="input_path_label",
-                default_value=str(state.input_path),
-                width=350,
-                readonly=True,
-            )
-            dpg.add_button(
-                label="Browse",
-                width=100,
-                callback=lambda: _show_file_dialog("input_path_dialog"),
-            )
+            with dpg.table_row():
+                dpg.add_text("Output File Name Prefix:")
+                dpg.add_input_text(
+                    tag="output_file_name",
+                    default_value=state.output_file_name,
+                    width=220,
+                )
 
-        with dpg.group(horizontal=True, horizontal_spacing=10):
-            dpg.add_text("Output Folder Path:")
-            dpg.add_input_text(
-                tag="output_path_label",
-                default_value=str(state.output_path),
-                width=350,
-                readonly=True,
-            )
-            dpg.add_button(
-                label="Browse",
-                width=100,
-                callback=lambda: _show_file_dialog("output_path_dialog"),
-            )
+            with dpg.table_row():
+                dpg.add_text("Copy Directory / Input File/Folder Path:")
+                with dpg.group(horizontal=True, horizontal_spacing=8):
+                    dpg.add_input_text(
+                        tag="input_path_label",
+                        default_value=str(state.input_path),
+                        width=320,
+                        readonly=True,
+                    )
+                    dpg.add_button(
+                        label="Browse",
+                        width=90,
+                        callback=lambda: _show_file_dialog("input_path_dialog"),
+                    )
 
-        with dpg.group(horizontal=True, horizontal_spacing=10):
-            dpg.add_button(label="Copy logs", width=120)
-            dpg.add_button(label="Copy CSV data", width=140)
+            with dpg.table_row():
+                dpg.add_text("Output Folder Path:")
+                with dpg.group(horizontal=True, horizontal_spacing=8):
+                    dpg.add_input_text(
+                        tag="output_path_label",
+                        default_value=str(state.output_path),
+                        width=320,
+                        readonly=True,
+                    )
+                    dpg.add_button(
+                        label="Browse",
+                        width=90,
+                        callback=lambda: _show_file_dialog("output_path_dialog"),
+                    )
+
+        with dpg.group(horizontal=True, horizontal_spacing=12):
+            with dpg.child_window(border=True, autosize_y=True, width=260):
+                dpg.add_text("From Phone to PC", color=(200, 200, 200))
+                dpg.add_button(label="Copy logs", width=200)
+                dpg.add_button(label="Copy CSV data", width=200)
+
+            with dpg.child_window(border=True, autosize_y=True, width=260):
+                dpg.add_text("From PC TO PC", color=(200, 200, 200))
+                dpg.add_button(label="Stub Action 1", width=200)
+                dpg.add_button(label="Stub Action 2", width=200)
+                dpg.add_button(label="Stub Action 3", width=200)
 
     dpg.add_separator()
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=200):
@@ -337,7 +346,7 @@ def _handle_input_path_selected(sender: int, app_data: dict, user_data: UIState)
 
 
 def _handle_output_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
-    selection = next(iter(app_data.get("selections", {}).values()), None)
+    selection = app_data.get("file_path_name") or next(iter(app_data.get("selections", {}).values()), None)
     if selection is None:
         return
 
