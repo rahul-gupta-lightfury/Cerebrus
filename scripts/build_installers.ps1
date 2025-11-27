@@ -21,16 +21,28 @@ if (-not $version) {
 }
 
 Write-Section "Ensuring WiX Toolset"
-$heat = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\heat.exe"
-$candle = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\candle.exe"
-$light = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\light.exe"
-if (-not (Test-Path $heat)) {
-    choco install wixtoolset --yes --no-progress
+# First try to find tools in PATH (e.g., when run on CI)
+$heat = (Get-Command heat.exe -ErrorAction SilentlyContinue)?.Source
+$candle = (Get-Command candle.exe -ErrorAction SilentlyContinue)?.Source
+$light = (Get-Command light.exe -ErrorAction SilentlyContinue)?.Source
+
+# If not in PATH, try standard installation location
+if (-not $heat) {
+    $wixBinPath = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin"
+    if (Test-Path $wixBinPath) {
+        $heat = Join-Path $wixBinPath "heat.exe"
+        $candle = Join-Path $wixBinPath "candle.exe"
+        $light = Join-Path $wixBinPath "light.exe"
+    } else {
+        throw "WiX Toolset not found. Please install WiX Toolset v3.11 or later."
+    }
 }
 
-$heat = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\heat.exe"
-$candle = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\candle.exe"
-$light = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\light.exe"
+Write-Host "Using WiX tools:"
+Write-Host "  heat: $heat"
+Write-Host "  candle: $candle"
+Write-Host "  light: $light"
+
 
 Write-Section "Generating WiX sources"
 $componentsWxs = Join-Path $resolvedOutput "components.wxs"
