@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 
 import dearpygui.dearpygui as dpg
 
@@ -177,7 +178,7 @@ def build_file_actions(state: UIState) -> None:
 
             with dpg.child_window(border=True, autosize_y=True, width=350):
                 dpg.add_text("From PC TO PC", color=(200, 200, 200))
-                dpg.add_button(label="Generate Perf Report Only", width=300)
+                dpg.add_button(label="Generate Perf Report Only", width=300, callback=lambda: _handle_generate_perf_report(state))
                 dpg.add_button(label="Generate Colored Logs Only", width=300)
                 dpg.add_button(label="Generate Perf Report + Colored Logs", width=300)
 
@@ -266,6 +267,92 @@ def _handle_move_csv(state: UIState) -> None:
 
 def _handle_move_logs(state: UIState) -> None:
     _move_files_from_device(state, "Logs", "Logs")
+
+
+def _handle_generate_perf_report(state: UIState) -> None:
+    """Run PerfreportTool on CSV files and delete them on success."""
+    # Locate PerfreportTool.exe
+    # Assuming repo root is 3 levels up from this file (cerebrus/ui/components.py -> cerebrus/ui -> cerebrus -> root)
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    tool_path = repo_root / "Binaries" / "CsvTools" / "PerfreportTool.exe"
+
+    if not tool_path.exists():
+        log_message(state, "ERROR", f"PerfreportTool not found at: {tool_path}")
+        return
+
+    # Input CSV directory: {Move Files Folder Path}\CSV
+    csv_dir = state.input_path / "CSV"
+    if not csv_dir.exists():
+        log_message(state, "ERROR", f"CSV directory not found: {csv_dir}")
+        return
+
+    # Output directory: {Output Folder Path}
+    output_dir = state.output_path
+    if not output_dir.exists():
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            log_message(state, "ERROR", f"Failed to create output directory: {e}")
+            return
+
+    csv_files = list(csv_dir.glob("*.csv"))
+    if not csv_files:
+        log_message(state, "WARNING", f"No CSV files found in {csv_dir}")
+        return
+
+    log_message(state, "INFO", f"Found {len(csv_files)} CSV files. Starting processing...")
+
+    for csv_file in csv_files:
+        # Construct command
+        # Command: "{Tool}" -csv "{Input}" -reportType Default60fps -o "{Output}" -perfLog
+        
+        # Output path usually expects a filename prefix or full path. 
+        # User specified: "{Ouput Folder Path}\{CSV File Name}"
+        # We'll use the stem of the CSV file as the name.
+        output_file_path = output_dir / csv_file.stem
+        
+        cmd = [
+            str(tool_path),
+            "-csv", str(csv_file),
+            "-reportType", "Default60fps",
+            "-o", str(output_file_path),
+            "-perfLog"
+        ]
+
+        log_message(state, "INFO", f"Processing {csv_file.name}...")
+        
+        try:
+            # Run command
+            # Create startupinfo to hide console window on Windows
+            startupinfo = None
+            if hasattr(subprocess, 'STARTUPINFO'):
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                startupinfo=startupinfo
+            )
+
+            if result.returncode == 0:
+                log_message(state, "SUCCESS", f"Generated report for {csv_file.name}")
+                # Delete the CSV file
+                try:
+                    csv_file.unlink()
+                    log_message(state, "INFO", f"Deleted {csv_file.name}")
+                except Exception as e:
+                    log_message(state, "WARNING", f"Failed to delete {csv_file.name}: {e}")
+            else:
+                log_message(state, "ERROR", f"Failed to process {csv_file.name}")
+                log_message(state, "ERROR", f"Tool Output: {result.stdout}")
+                log_message(state, "ERROR", f"Tool Error: {result.stderr}")
+
+        except Exception as e:
+            log_message(state, "ERROR", f"Exception while processing {csv_file.name}: {e}")
+
+    log_message(state, "INFO", "Batch processing completed.")
 
 
 def _move_files_from_device(state: UIState, source_subpath: str, dest_subpath: str) -> None:
@@ -778,7 +865,13 @@ def _save_current_profile(state: UIState) -> None:
         
         profile.output_file_name = state.output_file_name
         profile.input_path = str(state.input_path)
-        profile.output_path = str(state.output_path)
+        
+        # Save base_output_path if available to avoid saving the appended device path
+        if state.base_output_path:
+            profile.output_path = str(state.base_output_path)
+        else:
+            profile.output_path = str(state.output_path)
+            
         profile.use_prefix_only = state.use_prefix_only
         profile.append_device_to_path = state.append_device_to_path
         
@@ -798,7 +891,13 @@ def _auto_save_profile(state: UIState) -> None:
             
         profile.output_file_name = state.output_file_name
         profile.input_path = str(state.input_path)
-        profile.output_path = str(state.output_path)
+        
+        # Save base_output_path if available to avoid saving the appended device path
+        if state.base_output_path:
+            profile.output_path = str(state.base_output_path)
+        else:
+            profile.output_path = str(state.output_path)
+            
         profile.use_prefix_only = state.use_prefix_only
         profile.append_device_to_path = state.append_device_to_path
         
