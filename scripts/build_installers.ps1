@@ -21,39 +21,20 @@ if (-not $version) {
 }
 
 Write-Section "Ensuring WiX Toolset"
-
-function Resolve-WiXBinary([string]$binary) {
-    $searchRoots = @(
-        Join-Path $env:ProgramFiles "WiX Toolset v3.11\bin",
-        Join-Path $env:ProgramFiles "WiX Toolset v3.14\bin",
-        Join-Path ${env:ProgramFiles(x86)} "WiX Toolset v3.11\bin",
-        Join-Path ${env:ProgramFiles(x86)} "WiX Toolset v3.14\bin"
-    )
-
-    foreach ($root in $searchRoots) {
-        $candidate = Join-Path $root $binary
-        if (Test-Path $candidate) {
-            return $candidate
-        }
-    }
+$heat = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\heat.exe"
+$candle = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\candle.exe"
+$light = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\light.exe"
+if (-not (Test-Path $heat)) {
+    choco install wixtoolset --yes --no-progress
 }
 
-$heat = Resolve-WiXBinary "heat.exe"
-if (-not $heat) {
-    choco install wixtoolset --yes --no-progress --limit-output
-    $heat = Resolve-WiXBinary "heat.exe"
-}
-
-$candle = Resolve-WiXBinary "candle.exe"
-$light = Resolve-WiXBinary "light.exe"
-
-if (-not ($heat -and $candle -and $light)) {
-    throw "WiX Toolset binaries could not be located after installation."
-}
+$heat = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\heat.exe"
+$candle = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\candle.exe"
+$light = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin\light.exe"
 
 Write-Section "Generating WiX sources"
 $componentsWxs = Join-Path $resolvedOutput "components.wxs"
-& "$heat" dir $stagingRoot -dr INSTALLFOLDER -cg CerebrusComponents -sfrag -srd -var var.StagingDir -out $componentsWxs
+& $heat dir $stagingRoot -dr INSTALLFOLDER -cg CerebrusComponents -sfrag -srd -var var.StagingDir -out $componentsWxs
 
 $productWxs = @"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -77,8 +58,8 @@ $productWxsPath = Join-Path $resolvedOutput "product.wxs"
 Set-Content -Path $productWxsPath -Value $productWxs -Encoding UTF8
 
 Write-Section "Building MSI"
-& "$candle" -dStagingDir=$stagingRoot -dProductVersion=$version -out (Join-Path $resolvedOutput "") $productWxsPath $componentsWxs
-& "$light" -ext WixUIExtension -out (Join-Path $resolvedOutput "Cerebrus-$version.msi") (Join-Path $resolvedOutput "product.wixobj") (Join-Path $resolvedOutput "components.wixobj")
+& $candle -dStagingDir=$stagingRoot -dProductVersion=$version -out (Join-Path $resolvedOutput "") $productWxsPath $componentsWxs
+& $light -ext WixUIExtension -out (Join-Path $resolvedOutput "Cerebrus-$version.msi") (Join-Path $resolvedOutput "product.wixobj") (Join-Path $resolvedOutput "components.wixobj")
 
 Write-Section "Building Burn bootstrapper (.exe)"
 $bundleWxs = @"
@@ -95,8 +76,8 @@ $bundleWxs = @"
 $bundleWxsPath = Join-Path $resolvedOutput "bundle.wxs"
 Set-Content -Path $bundleWxsPath -Value $bundleWxs -Encoding UTF8
 
-& "$candle" -ext WixBalExtension -dProductVersion=$version -dMsiPath="$(Join-Path $resolvedOutput "Cerebrus-$version.msi")" -out (Join-Path $resolvedOutput "") $bundleWxsPath
-& "$light" -ext WixBalExtension -out (Join-Path $resolvedOutput "Cerebrus-$version.exe") (Join-Path $resolvedOutput "bundle.wixobj")
+& $candle -ext WixBalExtension -dProductVersion=$version -dMsiPath="$(Join-Path $resolvedOutput "Cerebrus-$version.msi")" -out (Join-Path $resolvedOutput "") $bundleWxsPath
+& $light -ext WixBalExtension -out (Join-Path $resolvedOutput "Cerebrus-$version.exe") (Join-Path $resolvedOutput "bundle.wixobj")
 
 Write-Section "Artifacts"
 Get-ChildItem $resolvedOutput -Filter "Cerebrus-$version.*" | ForEach-Object { Write-Host "Created $_" }
