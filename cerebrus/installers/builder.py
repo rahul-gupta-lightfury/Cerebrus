@@ -13,6 +13,7 @@ def build_windows_installer(output_dir: Path | None = None) -> Path:
     The bundle is structured for a Windows user-facing delivery:
     - `app/` holds the Cerebrus package, binaries, and metadata.
     - `launch_cerebrus.bat` provides a simple entry point.
+    - `install.ps1` provides dependency validation and upgrade routines.
     - `INSTALLER_CONTENTS.txt` records what was bundled.
     """
 
@@ -44,6 +45,7 @@ def build_windows_installer(output_dir: Path | None = None) -> Path:
     bundled_items.append(requirements_file.name)
 
     _write_launcher(staging_root)
+    _write_bootstrapper(staging_root)
     _write_manifest(staging_root, bundled_items)
 
     archive_path = output_dir / "Cerebrus"
@@ -74,6 +76,119 @@ if not exist "%PY_EXE%" (
     launcher_path.write_text(launcher_content)
 
 
+def _write_bootstrapper(staging_root: Path) -> None:
+    """Write a bootstrapper that validates and installs dependencies.
+
+    The bootstrapper is designed for Windows end-users that may not have
+    Python or the Android platform tools available. It attempts to upgrade
+    dependencies in-place when they are found and falls back to
+    winget-provided installers when they are missing.
+    """
+
+    bootstrap_script = staging_root / "install.ps1"
+    bootstrap_cmd = staging_root / "install.cmd"
+
+    bootstrap_script.write_text(
+        """param(
+    [string]$Destination = "$env:ProgramFiles\\Cerebrus"
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Write-Section($message) {
+    Write-Host "`n==== $message ====" -ForegroundColor Cyan
+}
+
+function Ensure-WingetAvailable {
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        throw "winget is required to bootstrap dependencies. Install the latest App Installer from the Microsoft Store."
+    }
+}
+
+function Ensure-Python {
+    Write-Section "Checking Python"
+    $python = Get-Command py -ErrorAction SilentlyContinue
+    if (-not $python) {
+        $python = Get-Command python -ErrorAction SilentlyContinue
+    }
+
+    if ($python) {
+        $version = & $python.Source -c "import sys; print('{}.{}'.format(*sys.version_info[:2]))" 2>$null
+        if ($version -and [version]$version -ge [version]"3.11") {
+            Write-Host "Found Python $version" -ForegroundColor Green
+            & $python.Source -m pip install --upgrade pip --quiet
+            return $python.Source
+        }
+        Write-Host "Python found but below 3.11; upgrading via winget..." -ForegroundColor Yellow
+    } else {
+        Write-Host "Python not found; installing via winget..." -ForegroundColor Yellow
+    }
+
+    Ensure-WingetAvailable
+    winget install --id Python.Python.3.11 --exact --silent --accept-package-agreements --accept-source-agreements
+    $python = Get-Command py -ErrorAction SilentlyContinue
+    if (-not $python) {
+        $python = Get-Command python -ErrorAction SilentlyContinue
+    }
+    if (-not $python) {
+        throw "Python installation did not succeed."
+    }
+    return $python.Source
+}
+
+function Ensure-AdbTools {
+    Write-Section "Checking Android platform tools (adb)"
+    $adb = Get-Command adb -ErrorAction SilentlyContinue
+    if ($adb) {
+        Write-Host "adb located at $($adb.Source)" -ForegroundColor Green
+        return
+    }
+
+    Write-Host "adb not found; installing platform tools via winget..." -ForegroundColor Yellow
+    Ensure-WingetAvailable
+    winget install --id Google.AndroidSDK.PlatformTools --exact --silent --accept-package-agreements --accept-source-agreements
+}
+
+function Install-Cerebrus($pythonPath) {
+    Write-Section "Installing Cerebrus into $Destination"
+    $staging = "$PSScriptRoot\\app"
+    if (-not (Test-Path $staging)) {
+        throw "Staging directory '$staging' missing from installer payload."
+    }
+
+    if (Test-Path $Destination) {
+        Write-Host "Existing install detected. Replacing contents..." -ForegroundColor Yellow
+        Remove-Item -Path $Destination -Recurse -Force
+    }
+    Copy-Item -Path $staging -Destination $Destination -Recurse
+
+    & $pythonPath -m pip install -r "$Destination\\requirements.txt" --quiet
+    Write-Host "Cerebrus installed to $Destination" -ForegroundColor Green
+}
+
+try {
+    $pythonPath = Ensure-Python
+    Ensure-AdbTools
+    Install-Cerebrus -pythonPath $pythonPath
+    Write-Host "Installation complete. Launch using launch_cerebrus.bat inside $Destination" -ForegroundColor Green
+    exit 0
+}
+catch {
+    Write-Error $_
+    exit 1
+}
+"""
+    )
+
+    bootstrap_cmd.write_text(
+        """@echo off
+setlocal
+set SCRIPT_DIR=%~dp0
+powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%install.ps1" %*
+"""
+    )
+
 def _write_manifest(staging_root: Path, items: Iterable[str | Path]) -> None:
     manifest_path = staging_root / "INSTALLER_CONTENTS.txt"
     entries = []
@@ -87,7 +202,8 @@ def _write_manifest(staging_root: Path, items: Iterable[str | Path]) -> None:
         "Included items:",
         *entries,
         "",
-        "Place a Python 3.11+ interpreter in app/python/ before running launch_cerebrus.bat.",
+        "Use install.cmd to validate Python and adb prerequisites with winget before launching.",
+        "launch_cerebrus.bat expects a Python 3.11+ interpreter to be available in app/python/.",
     ]
     manifest_path.write_text("\n".join(manifest_lines))
 

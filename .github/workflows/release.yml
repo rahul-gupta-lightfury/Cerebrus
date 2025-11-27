@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "V.*.*.*"
+      - "v.*.*.*"
 
 jobs:
   release:
@@ -14,14 +14,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure tag is on dev-py branch
+      - name: Normalize tag version
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure tag is on dev-py or main
         shell: bash
         run: |
-          git fetch origin dev-py --depth=1
-          if ! git merge-base --is-ancestor $GITHUB_SHA origin/dev-py; then
-            echo "Tag $GITHUB_REF_NAME is not based on dev-py."
-            exit 1
+          git fetch origin dev-py main --depth=1
+          if git merge-base --is-ancestor $GITHUB_SHA origin/dev-py; then
+            exit 0
           fi
+          if git merge-base --is-ancestor $GITHUB_SHA origin/main; then
+            exit 0
+          fi
+
+          echo "Tag $GITHUB_REF_NAME must be based on dev-py or main."
+          exit 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,25 +39,33 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Build Windows installer bundle
+      - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m cerebrus.installers.builder --output installer_output
+          python -m pip install -r requirements.txt
 
-      - name: Upload installer artifact
+      - name: Build MSI and EXE installers
+        shell: pwsh
+        run: |
+          ./scripts/build_installers.ps1 -TagVersion "${{ steps.version.outputs.version }}" -OutputDir "installer_output"
+
+      - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CerebrusInstaller-${{ github.ref_name }}
-          path: installer_output/Cerebrus.zip
+          name: CerebrusInstallers-${{ github.ref_name }}
+          path: |
+            installer_output/Cerebrus-${{ steps.version.outputs.version }}.msi
+            installer_output/Cerebrus-${{ steps.version.outputs.version }}.exe
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           body: |
-            Automated release for tag ${{ github.ref_name }} generated from the dev-py branch.
+            Automated release for tag ${{ github.ref_name }}.
           draft: false
           prerelease: false
+          files: |
+            installer_output/Cerebrus-${{ steps.version.outputs.version }}.msi
+            installer_output/Cerebrus-${{ steps.version.outputs.version }}.exe
