@@ -44,26 +44,26 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
 
-      - name: Install WiX Toolset
+      - name: Install Inno Setup
         shell: pwsh
         run: |
-          choco install wixtoolset --version=3.11.2 --yes --no-progress
-          $env:PATH = "C:\Program Files (x86)\WiX Toolset v3.11\bin;$env:PATH"
-          echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          choco install innosetup --yes --no-progress
+          echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Build MSI and EXE installers
+      - name: Build standalone executable and installer
         shell: pwsh
         run: |
-          ./scripts/build_installers.ps1 -TagVersion "${{ steps.version.outputs.version }}" -OutputDir "installer_output"
+          ./scripts/build_pyinstaller.ps1 -TagVersion "${{ steps.version.outputs.version }}" -OutputDir "dist"
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
         with:
           name: CerebrusInstallers-${{ github.ref_name }}
           path: |
-            installer_output/Cerebrus-${{ steps.version.outputs.version }}.msi
-            installer_output/Cerebrus-${{ steps.version.outputs.version }}.exe
+            dist/Cerebrus-${{ steps.version.outputs.version }}-Setup.exe
+            dist/Cerebrus-${{ steps.version.outputs.version }}-win64.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -72,8 +72,26 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             Automated release for tag ${{ github.ref_name }}.
+            
+            ## Installation Options
+            
+            ### Option 1: Windows Installer (Recommended)
+            1. Download `Cerebrus-${{ steps.version.outputs.version }}-Setup.exe`
+            2. Run the installer
+            3. Follow the installation wizard
+            4. Launch Cerebrus from Start Menu or Desktop shortcut
+            
+            ### Option 2: Portable ZIP
+            1. Download `Cerebrus-${{ steps.version.outputs.version }}-win64.zip`
+            2. Extract to your preferred location
+            3. Run `Cerebrus.exe`
+            
+            **Requirements:**
+            - Windows 10/11 (64-bit)
+            - No Python installation required - everything is bundled!
           draft: false
           prerelease: false
           files: |
-            installer_output/Cerebrus-${{ steps.version.outputs.version }}.msi
-            installer_output/Cerebrus-${{ steps.version.outputs.version }}.exe
+            dist/Cerebrus-${{ steps.version.outputs.version }}-Setup.exe
+            dist/Cerebrus-${{ steps.version.outputs.version }}-win64.zip
+
