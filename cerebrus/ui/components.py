@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import subprocess
+import sys
 
 import dearpygui.dearpygui as dpg
 
@@ -179,7 +180,7 @@ def build_file_actions(state: UIState) -> None:
             with dpg.child_window(border=True, autosize_y=True, width=350):
                 dpg.add_text("From PC TO PC", color=(200, 200, 200))
                 dpg.add_button(label="Generate Perf Report Only", width=300, callback=lambda: _handle_generate_perf_report(state))
-                dpg.add_button(label="Generate Colored Logs Only", width=300)
+                dpg.add_button(label="Generate Colored Logs Only", width=300, callback=lambda: _handle_generate_colored_logs(state))
                 dpg.add_button(label="Generate Perf Report + Colored Logs", width=300)
 
     dpg.add_separator()
@@ -353,6 +354,84 @@ def _handle_generate_perf_report(state: UIState) -> None:
             log_message(state, "ERROR", f"Exception while processing {csv_file.name}: {e}")
 
     log_message(state, "INFO", "Batch processing completed.")
+
+
+def _handle_generate_colored_logs(state: UIState) -> None:
+    """Convert text logs to colored HTML logs."""
+    # Locate log_to_html.py
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    tool_path = repo_root / "cerebrus" / "tools" / "log_to_html.py"
+
+    if not tool_path.exists():
+        log_message(state, "ERROR", f"Log conversion tool not found at: {tool_path}")
+        return
+
+    # Input Logs directory: {Move Files Folder Path}\Logs
+    logs_dir = state.input_path / "Logs"
+    if not logs_dir.exists():
+        log_message(state, "ERROR", f"Logs directory not found: {logs_dir}")
+        return
+
+    # Output directory: {Output Folder Path}
+    output_dir = state.output_path
+    if not output_dir.exists():
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            log_message(state, "ERROR", f"Failed to create output directory: {e}")
+            return
+
+    log_files = list(logs_dir.glob("*.log")) + list(logs_dir.glob("*.txt"))
+    if not log_files:
+        log_message(state, "WARNING", f"No log files found in {logs_dir}")
+        return
+
+    log_message(state, "INFO", f"Found {len(log_files)} log files. Starting conversion...")
+
+    for log_file in log_files:
+        # Output HTML file path
+        output_file_path = output_dir / f"{log_file.stem}.html"
+        
+        cmd = [
+            sys.executable,
+            str(tool_path),
+            "-i", str(log_file),
+            "-o", str(output_file_path),
+        ]
+
+        log_message(state, "INFO", f"Converting {log_file.name}...")
+        
+        try:
+            # Run command
+            startupinfo = None
+            if hasattr(subprocess, 'STARTUPINFO'):
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                startupinfo=startupinfo
+            )
+
+            if result.returncode == 0:
+                log_message(state, "SUCCESS", f"Created {output_file_path.name}")
+                # Delete the source file
+                try:
+                    log_file.unlink()
+                    log_message(state, "INFO", f"Deleted {log_file.name}")
+                except Exception as e:
+                    log_message(state, "WARNING", f"Failed to delete {log_file.name}: {e}")
+            else:
+                log_message(state, "ERROR", f"Failed to convert {log_file.name}")
+                log_message(state, "ERROR", f"Tool Output: {result.stdout}")
+                log_message(state, "ERROR", f"Tool Error: {result.stderr}")
+
+        except Exception as e:
+            log_message(state, "ERROR", f"Exception while converting {log_file.name}: {e}")
+
+    log_message(state, "INFO", "Log conversion completed.")
 
 
 def _move_files_from_device(state: UIState, source_subpath: str, dest_subpath: str) -> None:
