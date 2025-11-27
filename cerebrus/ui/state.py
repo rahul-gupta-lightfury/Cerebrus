@@ -26,3 +26,5 @@ class UIState:
     logs: list[tuple[str, str, str]] = field(default_factory=list)
     log_filter: str = ""
     profile_manager: ProfileManager = field(default_factory=ProfileManager)
+    append_device_to_path: bool = False
+    base_output_path: Path | None = None  # Store the original path without device appended

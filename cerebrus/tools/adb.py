@@ -43,6 +43,15 @@ class AdbClient:
         )
         return package_name in result.stdout
 
+    def pull(self, serial: str, source: str, destination: str) -> None:
+        """Pull a file or directory from the device."""
+        self._run(["-s", serial, "pull", source, destination])
+
+    def shell(self, serial: str, command: List[str]) -> str:
+        """Run a shell command on the device."""
+        result = self._run(["-s", serial, "shell", *command])
+        return result.stdout
+
     def _run(self, args: List[str]) -> subprocess.CompletedProcess[str]:
         command = [self.executable, *args]
         completed = subprocess.run(

@@ -18,6 +18,14 @@ class CerebrusApp:
         self.state.profile_nickname = profile.nickname or "None"
         self.state.package_name = profile.package_name
         self.state.profile_path = path if path else Path("No profile loaded")
+        
+        # Load persisted fields from profile into state
+        if profile:
+            self.state.output_file_name = profile.output_file_name
+            self.state.input_path = Path(profile.input_path) if profile.input_path else Path("/path/to/input")
+            self.state.output_path = Path(profile.output_path) if profile.output_path else Path("/path/to/output")
+            self.state.use_prefix_only = profile.use_prefix_only
+            self.state.append_device_to_path = profile.append_device_to_path
 
     def build(self) -> None:
         dpg.create_context()

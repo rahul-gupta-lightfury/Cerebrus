@@ -12,6 +12,11 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 class Profile:
     nickname: Optional[str] = None
     package_name: str = ""
+    output_file_name: str = "perf_report"
+    input_path: str = ""
+    output_path: str = ""
+    use_prefix_only: bool = False
+    append_device_to_path: bool = False
 
     def validate(self) -> list[str]:
         errors = []
@@ -32,7 +37,10 @@ class Profile:
         with open(path, "r") as f:
             data = json.load(f)
         # Filter to only use fields that exist in current Profile class (backward compatibility)
-        valid_fields = {'nickname', 'package_name'}
+        valid_fields = {
+            'nickname', 'package_name', 'output_file_name', 'input_path', 
+            'output_path', 'use_prefix_only', 'append_device_to_path'
+        }
         filtered_data = {k: v for k, v in data.items() if k in valid_fields}
         return cls(**filtered_data)
 

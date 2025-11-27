@@ -6,6 +6,7 @@ from pathlib import Path
 import dearpygui.dearpygui as dpg
 
 from cerebrus.core.devices import DeviceInfo, collect_device_info
+from cerebrus.tools.adb import AdbClient, AdbError
 from cerebrus.ui.state import UIState
 
 SELECTED_ROW_COLOR = (70, 130, 200, 90)
@@ -108,7 +109,7 @@ def build_file_actions(state: UIState) -> None:
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=240):
         dpg.add_text("Data and Perf Report", color=(120, 180, 255))
         with dpg.table(header_row=False, policy=dpg.mvTable_SizingStretchProp):
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=250)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=320)
             dpg.add_table_column(width_fixed=True, init_width_or_weight=350)
             dpg.add_table_column(width_fixed=True, init_width_or_weight=180)
 
@@ -118,6 +119,8 @@ def build_file_actions(state: UIState) -> None:
                     tag="output_file_name",
                     default_value=state.output_file_name,
                     width=-1,
+                    callback=_handle_output_file_name_change,
+                    user_data=state,
                 )
                 dpg.add_checkbox(
                     tag="use_prefix_only",
@@ -128,7 +131,7 @@ def build_file_actions(state: UIState) -> None:
                 )
 
             with dpg.table_row():
-                dpg.add_text("Copy Directory /Input File/Folder Path:")
+                dpg.add_text("Move Files Folder Path:")
                 dpg.add_input_text(
                     tag="input_path_label",
                     default_value=str(state.input_path),
@@ -155,17 +158,28 @@ def build_file_actions(state: UIState) -> None:
                     callback=lambda: _show_file_dialog("output_path_dialog"),
                 )
 
+            with dpg.table_row():
+                dpg.add_text("Append Device Make and Model to Output Path:")
+                dpg.add_spacer()
+                dpg.add_checkbox(
+                    tag="append_device_to_path",
+                    label="",
+                    default_value=False,
+                    callback=_handle_append_device_toggle,
+                    user_data=state,
+                )
+
         with dpg.group(horizontal=True, horizontal_spacing=12):
             with dpg.child_window(border=True, autosize_y=True, width=260):
                 dpg.add_text("From Phone to PC", color=(200, 200, 200))
-                dpg.add_button(label="Copy logs", width=200)
-                dpg.add_button(label="Copy CSV data", width=200)
+                dpg.add_button(label="Move logs", width=200, callback=lambda: _handle_move_logs(state))
+                dpg.add_button(label="Move CSV data", width=200, callback=lambda: _handle_move_csv(state))
 
-            with dpg.child_window(border=True, autosize_y=True, width=260):
+            with dpg.child_window(border=True, autosize_y=True, width=350):
                 dpg.add_text("From PC TO PC", color=(200, 200, 200))
-                dpg.add_button(label="Stub Action 1", width=200)
-                dpg.add_button(label="Stub Action 2", width=200)
-                dpg.add_button(label="Stub Action 3", width=200)
+                dpg.add_button(label="Generate Perf Report Only", width=300)
+                dpg.add_button(label="Generate Colored Logs Only", width=300)
+                dpg.add_button(label="Generate Perf Report + Colored Logs", width=300)
 
     dpg.add_separator()
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=200):
@@ -197,8 +211,111 @@ def _handle_log_filter(sender: int, app_data: str, user_data: UIState) -> None:
     _render_log_entries(user_data)
 
 
+def _handle_output_file_name_change(sender: int, app_data: str, user_data: UIState) -> None:
+    user_data.output_file_name = app_data
+    _auto_save_profile(user_data)
+
+
 def _handle_use_prefix_toggle(sender: int, app_data: bool, user_data: UIState) -> None:
     user_data.use_prefix_only = bool(app_data)
+    _auto_save_profile(user_data)
+
+
+def _handle_append_device_toggle(sender: int, app_data: bool, user_data: UIState) -> None:
+    user_data.append_device_to_path = bool(app_data)
+    
+    # Store base path if not already stored
+    if user_data.base_output_path is None:
+        user_data.base_output_path = user_data.output_path
+    
+    # Get the selected device
+    selected_device = None
+    if user_data.selected_device_serial:
+        for device in user_data.devices:
+            if device.serial == user_data.selected_device_serial:
+                selected_device = device
+                break
+    
+    if not selected_device:
+        if app_data:
+            log_message(user_data, "INFO", "Device Make/Model will be appended when a device is selected.")
+        _auto_save_profile(user_data)
+        return
+    
+    if app_data:  # Checkbox is checked
+        # Append device make and model
+        device_folder = f"{selected_device.make}_{selected_device.model}"
+        new_path = user_data.base_output_path / device_folder
+        user_data.output_path = new_path
+        if dpg.does_item_exist("output_path_label"):
+            dpg.set_value("output_path_label", str(new_path))
+        log_message(user_data, "INFO", f"Output path updated: {new_path}")
+    else:  # Checkbox is unchecked
+        # Restore base path
+        user_data.output_path = user_data.base_output_path
+        if dpg.does_item_exist("output_path_label"):
+            dpg.set_value("output_path_label", str(user_data.base_output_path))
+        log_message(user_data, "INFO", f"Output path restored: {user_data.base_output_path}")
+    
+    _auto_save_profile(user_data)
+
+
+def _handle_move_csv(state: UIState) -> None:
+    _move_files_from_device(state, "Profiling/CSV", "CSV")
+
+
+def _handle_move_logs(state: UIState) -> None:
+    _move_files_from_device(state, "Logs", "Logs")
+
+
+def _move_files_from_device(state: UIState, source_subpath: str, dest_subpath: str) -> None:
+    if not state.selected_device_serial:
+        log_message(state, "ERROR", "No device selected.")
+        return
+
+    if not state.package_name:
+        log_message(state, "ERROR", "Package Name not set.")
+        return
+
+    parts = state.package_name.split(".")
+    if len(parts) < 3:
+        log_message(state, "ERROR", "Invalid Package Name format. Cannot derive Project Name.")
+        return
+    project_name = parts[-1]
+
+    # Source: /sdcard/Android/data/{package}/files/UnrealGame/{project}/{project}/Saved/{source_subpath}/
+    # User confirmed structure: UnrealGame/{Name}/{Name}/Saved/...
+    source_path = f"/sdcard/Android/data/{state.package_name}/files/UnrealGame/{project_name}/{project_name}/Saved/{source_subpath}/"
+    
+    # Dest: {state.output_path}/{dest_subpath}/
+    dest_path = state.output_path / dest_subpath
+    
+    if not dest_path.exists():
+        dest_path.mkdir(parents=True, exist_ok=True)
+
+    client = AdbClient()
+    serial = state.selected_device_serial
+
+    log_message(state, "INFO", f"Moving files from {source_path} to {dest_path}...")
+
+    try:
+        # Pull all files from source directory
+        # Append . to source path to pull contents
+        client.pull(serial, source_path + ".", str(dest_path))
+        
+        # Delete files from source
+        client.shell(serial, ["rm", "-rf", source_path + "*"])
+        
+        log_message(state, "SUCCESS", f"Moved files to {dest_path}")
+    except AdbError as e:
+        error_msg = str(e)
+        if "does not exist" in error_msg or "No such file or directory" in error_msg:
+            file_type = "Logs" if "Logs" in dest_subpath else "CSV Data"
+            log_message(state, "ERROR", f"No {file_type} present on device.")
+        else:
+            log_message(state, "ERROR", f"ADB Error: {e}")
+    except Exception as e:
+        log_message(state, "ERROR", f"Failed to move files: {e}")
 
 
 def _render_log_entries(state: UIState) -> None:
@@ -223,7 +340,36 @@ def _render_log_entries(state: UIState) -> None:
 
     for timestamp, level, message in filtered_logs:
         color = LOG_LEVEL_COLORS.get(level.upper(), (220, 220, 220))
-        dpg.add_text(f"[{timestamp}] [{level}] {message}", color=color, parent="log_container")
+        full_msg = f"[{timestamp}] [{level}] {message}"
+        
+        item = dpg.add_input_text(
+            default_value=full_msg,
+            readonly=True,
+            width=-1,
+            parent="log_container",
+        )
+        
+        theme = _get_log_theme(level.upper(), color)
+        dpg.bind_item_theme(item, theme)
+
+
+_LOG_THEMES: dict[str, int] = {}
+
+
+def _get_log_theme(level: str, color: tuple) -> int:
+    if level in _LOG_THEMES:
+        if dpg.does_item_exist(_LOG_THEMES[level]):
+            return _LOG_THEMES[level]
+            
+    with dpg.theme() as theme:
+        with dpg.theme_component(dpg.mvInputText):
+            dpg.add_theme_color(dpg.mvThemeCol_Text, color)
+            dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 0)
+            dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 0, 0)
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (0, 0, 0, 0))
+            
+    _LOG_THEMES[level] = theme
+    return theme
 
 
 def log_message(state: UIState, level: str, message: str) -> None:
@@ -321,11 +467,53 @@ def _render_device_row(row_index: int, device: DeviceInfo, state: UIState) -> No
 
 def _handle_device_select(sender: int, app_data: int, user_data: tuple[UIState, int, str]) -> None:
     state, row_index, serial = user_data
+    
+    # Check if package found on this device
+    selected_device = None
+    for device in state.devices:
+        if device.serial == serial:
+            selected_device = device
+            break
+            
+    if selected_device and not selected_device.package_found:
+        log_message(state, "WARNING", f"Package not found on {selected_device.make} {selected_device.model}. Please install the necessary package.")
+        # Don't select the row
+        return
+
     state.selected_device_serial = serial
 
     if not dpg.does_item_exist("device_table"):
         return
     _select_device_row(row_index, state)
+    
+    # Update output path if append is enabled
+    if state.append_device_to_path:
+        # Ensure base path is set
+        if state.base_output_path is None:
+            state.base_output_path = state.output_path
+
+        # Find the device info
+        selected_device = None
+        for device in state.devices:
+            if device.serial == serial:
+                selected_device = device
+                break
+        
+        if selected_device:
+            device_folder = f"{selected_device.make}_{selected_device.model}"
+            new_path = state.base_output_path / device_folder
+            state.output_path = new_path
+            if dpg.does_item_exist("output_path_label"):
+                dpg.set_value("output_path_label", str(new_path))
+            log_message(state, "INFO", f"Output path updated for new device: {new_path}")
+
+    # Update output file name to match device make and model
+    if selected_device:
+        new_file_name = f"{selected_device.make}_{selected_device.model}"
+        state.output_file_name = new_file_name
+        if dpg.does_item_exist("output_file_name"):
+            dpg.set_value("output_file_name", new_file_name)
+        _auto_save_profile(state)
 
 
 def _select_device_row(row_index: int, state: UIState) -> None:
@@ -394,18 +582,21 @@ def _register_file_dialogs(state: UIState) -> None:
 
 
 def _handle_input_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
-    selection = next(iter(app_data.get("selections", {}).values()), None)
+    # For directory selector, use file_path_name; for file selector, use selections
+    selection = app_data.get("file_path_name") or next(iter(app_data.get("selections", {}).values()), None)
     if selection is None:
         return
 
-    user_data.input_path = Path(selection)
+    # Validate path exists before setting
+    path = Path(selection)
+    if not path.exists():
+        return
+    
+    user_data.input_path = path
     if dpg.does_item_exist("input_path_label"):
-        dpg.set_value("input_path_label", str(selection))
-
-
-    user_data.output_path = Path(selection)
-    if dpg.does_item_exist("output_path_label"):
-        dpg.set_value("output_path_label", str(selection))
+        dpg.set_value("input_path_label", str(path))
+        
+    _auto_save_profile(user_data)
 
 
 def _handle_output_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
@@ -413,9 +604,31 @@ def _handle_output_path_selected(sender: int, app_data: dict, user_data: UIState
     if selection is None:
         return
 
-    user_data.output_path = Path(selection)
+    new_base_path = Path(selection)
+    user_data.base_output_path = new_base_path
+    
+    if user_data.append_device_to_path:
+        # Re-apply device suffix
+        selected_device = None
+        if user_data.selected_device_serial:
+            for device in user_data.devices:
+                if device.serial == user_data.selected_device_serial:
+                    selected_device = device
+                    break
+        
+        if selected_device:
+            device_folder = f"{selected_device.make}_{selected_device.model}"
+            user_data.output_path = new_base_path / device_folder
+        else:
+             # Fallback if no device selected
+             user_data.output_path = new_base_path
+    else:
+        user_data.output_path = new_base_path
+
     if dpg.does_item_exist("output_path_label"):
-        dpg.set_value("output_path_label", str(selection))
+        dpg.set_value("output_path_label", str(user_data.output_path))
+        
+    _auto_save_profile(user_data)
 
 
 def _handle_package_name_change(sender: int, app_data: str, user_data: UIState) -> None:
@@ -556,11 +769,40 @@ def _handle_profile_save(state: UIState, is_edit: bool) -> None:
 def _save_current_profile(state: UIState) -> None:
     if state.profile_manager.current_profile and state.profile_manager.current_profile_path:
         # Update profile from current UI state
-        state.profile_manager.current_profile.package_name = state.package_name
-        # Update other fields if we track them
+        profile = state.profile_manager.current_profile
+        profile.package_name = state.package_name
+        
+        # Update fields from UI/State
+        if dpg.does_item_exist("output_file_name"):
+            state.output_file_name = dpg.get_value("output_file_name")
+        
+        profile.output_file_name = state.output_file_name
+        profile.input_path = str(state.input_path)
+        profile.output_path = str(state.output_path)
+        profile.use_prefix_only = state.use_prefix_only
+        profile.append_device_to_path = state.append_device_to_path
+        
         state.profile_manager.save_current_profile()
     else:
         _show_file_dialog("save_profile_as_dialog")
+
+
+def _auto_save_profile(state: UIState) -> None:
+    """Automatically save specific fields to the current profile."""
+    if state.profile_manager.current_profile and state.profile_manager.current_profile_path:
+        profile = state.profile_manager.current_profile
+        
+        # Update fields
+        if dpg.does_item_exist("output_file_name"):
+            state.output_file_name = dpg.get_value("output_file_name")
+            
+        profile.output_file_name = state.output_file_name
+        profile.input_path = str(state.input_path)
+        profile.output_path = str(state.output_path)
+        profile.use_prefix_only = state.use_prefix_only
+        profile.append_device_to_path = state.append_device_to_path
+        
+        state.profile_manager.save_current_profile()
 
 
 def _register_profile_file_dialogs(state: UIState) -> None:
@@ -598,11 +840,22 @@ def _handle_save_profile_as_selected(sender: int, app_data: dict, user_data: UIS
     package_name = temp_data.get("package_name") or user_data.package_name
     
     # Create profile
+    # Update state.output_file_name from UI
+    if dpg.does_item_exist("output_file_name"):
+        user_data.output_file_name = dpg.get_value("output_file_name")
+
     profile = user_data.profile_manager.create_new_profile(
         nickname=nickname,
         package_name=package_name,
         path=path
     )
+    # Populate fields
+    profile.output_file_name = user_data.output_file_name
+    profile.input_path = str(user_data.input_path)
+    profile.output_path = str(user_data.output_path)
+    profile.use_prefix_only = user_data.use_prefix_only
+    profile.append_device_to_path = user_data.append_device_to_path
+
     profile.save(path)
     
     log_message(user_data, "SUCCESS", f"New profile '{nickname}' created at {path}")
@@ -646,6 +899,14 @@ def _handle_open_profile_selected(sender: int, app_data: dict, user_data: UIStat
             user_data.package_name = profile.package_name
             user_data.profile_path = path
             
+            # Load persisted fields
+            user_data.output_file_name = profile.output_file_name
+            user_data.input_path = Path(profile.input_path) if profile.input_path else Path("")
+            user_data.output_path = Path(profile.output_path) if profile.output_path else Path("")
+            user_data.use_prefix_only = profile.use_prefix_only
+            user_data.append_device_to_path = profile.append_device_to_path
+            
+            # Update UI elements
             if dpg.does_item_exist("package_input"):
                 dpg.set_value("package_input", profile.package_name)
             
@@ -654,7 +915,21 @@ def _handle_open_profile_selected(sender: int, app_data: dict, user_data: UIStat
             
             if dpg.does_item_exist("profile_path_input"):
                 dpg.set_value("profile_path_input", str(path))
-                # _update_profile_path_display(path) # Removed
+                
+            if dpg.does_item_exist("output_file_name"):
+                dpg.set_value("output_file_name", user_data.output_file_name)
+                
+            if dpg.does_item_exist("input_path_label"):
+                dpg.set_value("input_path_label", str(user_data.input_path))
+                
+            if dpg.does_item_exist("output_path_label"):
+                dpg.set_value("output_path_label", str(user_data.output_path))
+                
+            if dpg.does_item_exist("use_prefix_only"):
+                dpg.set_value("use_prefix_only", user_data.use_prefix_only)
+                
+            if dpg.does_item_exist("append_device_to_path"):
+                dpg.set_value("append_device_to_path", user_data.append_device_to_path)
             
             _update_profile_display_colors(user_data)
             
