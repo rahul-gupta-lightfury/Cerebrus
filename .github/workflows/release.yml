@@ -60,6 +60,37 @@ jobs:
         run: |
           ./scripts/build_pyinstaller.ps1 -TagVersion "${{ steps.version.outputs.version }}" -OutputDir "dist"
 
+      - name: Validate Installer
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $installerPath = "dist/Cerebrus-$version-Setup.exe"
+          
+          Write-Host "Validating installer: $installerPath"
+          
+          # 1. Run the installer silently
+          Start-Process -FilePath $installerPath -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -NoNewWindow
+          
+          # 2. Verify files were installed (bundling check)
+          $installDir = "C:\Program Files\Cerebrus"
+          if (-not (Test-Path "$installDir\install_dependencies.ps1")) {
+             # Fallback check for x86 if needed, though we expect x64
+             $installDir = "C:\Program Files (x86)\Cerebrus"
+             if (-not (Test-Path "$installDir\install_dependencies.ps1")) {
+                 Write-Error "Validation Failed: install_dependencies.ps1 not found in installation directory."
+                 exit 1
+             }
+          }
+          Write-Host "Validation Passed: Dependency script bundled correctly."
+          
+          # 3. Verify commands (sanity check)
+          Write-Host "Checking Python command..."
+          python --version
+          
+          Write-Host "Checking ADB command..."
+          adb version
+
+
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
         with:
