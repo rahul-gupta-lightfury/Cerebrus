@@ -13,6 +13,7 @@ import dearpygui.dearpygui as dpg
 from cerebrus.core.devices import DeviceInfo, collect_device_info
 from cerebrus.tools.adb import AdbClient, AdbError
 from cerebrus.ui.state import UIState
+from cerebrus._version import __version__
 
 SELECTED_ROW_COLOR = (70, 130, 200, 90)
 LOG_LEVEL_COLORS = {
@@ -89,9 +90,101 @@ def build_menu_bar(state: UIState) -> None:
                 dpg.add_menu_item(label="Reset to Defaults")
 
         with dpg.menu(label="Help"):
-            dpg.add_menu_item(label="Help")
-            dpg.add_menu_item(label="Provide Feedback")
-            dpg.add_menu_item(label="About")
+            dpg.add_menu_item(label="Help", callback=lambda: _open_user_guide(state))
+            dpg.add_menu_item(label="Provide Feedback", callback=lambda: _provide_feedback(state))
+            dpg.add_menu_item(label="About", callback=lambda: _show_about_dialog(state))
+
+
+def _open_user_guide(state: UIState) -> None:
+    """Open the bundled user guide HTML file."""
+    # Determine base path
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable
+        base_path = Path(sys._MEIPASS)
+        # Adjust path based on how PyInstaller bundles it. 
+        # Usually resources are at the top level or inside the package folder.
+        # Trying package folder first
+        html_file = base_path / "cerebrus" / "resources" / "user_guide.html"
+        if not html_file.exists():
+             html_file = base_path / "resources" / "user_guide.html"
+    else:
+        # Running from source
+        base_path = Path(__file__).resolve().parent.parent
+        html_file = base_path / "resources" / "user_guide.html"
+    
+    if html_file.exists():
+        try:
+            webbrowser.open(f"file:///{html_file.as_posix()}")
+            log_message(state, "SUCCESS", "Opened User Guide")
+        except Exception as e:
+            log_message(state, "ERROR", f"Failed to open User Guide: {e}")
+    else:
+        log_message(state, "ERROR", f"User Guide not found at: {html_file}")
+
+
+def _provide_feedback(state: UIState) -> None:
+    """Open default mail client for feedback."""
+    email = "engineering-enginetools@lightfurygames.com"
+    subject = "[CEREBRUS][FEEDBACK]"
+    try:
+        webbrowser.open(f"mailto:{email}?subject={subject}")
+        log_message(state, "SUCCESS", "Opened mail client for feedback")
+    except Exception as e:
+        log_message(state, "ERROR", f"Failed to open mail client: {e}")
+
+
+def _show_about_dialog(state: UIState) -> None:
+    """Show the About dialog."""
+    if dpg.does_item_exist("about_dialog"):
+        dpg.delete_item("about_dialog")
+    
+    # Calculate center position
+    viewport_width = dpg.get_viewport_width()
+    viewport_height = dpg.get_viewport_height()
+    window_width = 600
+    window_height = 400
+    pos_x = (viewport_width - window_width) // 2
+    pos_y = (viewport_height - window_height) // 2
+        
+    with dpg.window(
+        tag="about_dialog", 
+        label="About", 
+        modal=True, 
+        width=window_width, 
+        height=window_height, 
+        no_resize=True,
+        pos=(pos_x, pos_y),
+        no_scrollbar=True
+    ):
+        # Title
+        dpg.add_text("Cerebrus", color=(120, 200, 255))
+        
+        # Version
+        dpg.add_text(f"Version: {__version__}")
+        
+        # Author
+        dpg.add_text("Author: Lightfury Games (Rahul Gupta)")
+        
+        # Repository
+        dpg.add_text("Repository:")
+        dpg.add_text("https://github.com/rahul-gupta-lightfury/Cerebrus", color=(100, 150, 255))
+        
+        # Description
+        dpg.add_text("Python-based Windows-only toolkit with a Dear Py Gui UI for managing")
+        dpg.add_text("Unreal Engine Android profiling workflows.")
+        
+        # License
+        with dpg.group(horizontal=True):
+            dpg.add_text("Licensed under the")
+            dpg.add_text("Apache 2.0 License", color=(100, 150, 255))
+            dpg.add_text(".")
+        
+        dpg.add_spacer(height=20)
+        
+        # OK Button
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=480)
+            dpg.add_button(label="OK", width=80, callback=lambda: dpg.delete_item("about_dialog"))
 
 
 def build_profile_summary(state: UIState) -> None:
