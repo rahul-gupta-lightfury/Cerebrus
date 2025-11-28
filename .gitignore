@@ -280,6 +280,12 @@ config/local.settings.json
 config/projects/*.local.json
 config/profiles/*.local.json
 
+# User profile directory (stores last used profile path)
+.cerebrus/
+
+# Test profiles (optional - remove if you want to commit test profiles)
+**/test_profiles/
+
 ###############################################
 # Profiling data & captures
 ###############################################

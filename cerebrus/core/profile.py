@@ -98,8 +98,31 @@ class ProfileManager:
                 # Failed to load, maybe deleted
                 self.set_last_used_profile_path(None)
         
-        # Default profile
-        default_profile = Profile(nickname=None)
+        # Try to load bundled default profile
+        try:
+            import sys
+            if getattr(sys, 'frozen', False):
+                base_path = Path(sys._MEIPASS)
+                default_path = base_path / "cerebrus" / "resources" / "Titan.json"
+                if not default_path.exists():
+                    default_path = base_path / "resources" / "Titan.json"
+            else:
+                base_path = Path(__file__).resolve().parent.parent
+                default_path = base_path / "resources" / "Titan.json"
+            
+            if default_path.exists():
+                profile = Profile.load(default_path)
+                self.current_profile = profile
+                # We don't set current_profile_path for the default bundled profile 
+                # to avoid overwriting it in the install dir. 
+                # It acts as a template until saved elsewhere.
+                self.current_profile_path = None 
+                return profile, None
+        except Exception as e:
+            print(f"Failed to load default profile: {e}")
+
+        # Fallback to empty profile
+        default_profile = Profile(nickname="Titan", package_name="com.lightfury.titan")
         self.current_profile = default_profile
         self.current_profile_path = None
         return default_profile, None

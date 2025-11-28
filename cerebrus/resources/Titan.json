@@ -1,0 +1,9 @@
+{
+    "nickname": "Titan",
+    "package_name": "com.lightfury.titan",
+    "output_file_name": "perf_report",
+    "input_path": "",
+    "output_path": "",
+    "use_prefix_only": false,
+    "append_device_to_path": false
+}

@@ -57,7 +57,7 @@ def build_menu_bar(state: UIState) -> None:
 
         with dpg.menu(label="Profile"):
             dpg.add_menu_item(label="New", callback=lambda: _show_profile_dialog(state, is_edit=False))
-            dpg.add_menu_item(label="Open", callback=lambda: _show_file_dialog("open_profile_dialog"))
+            dpg.add_menu_item(label="Open", callback=lambda: _open_profile_native(state))
             dpg.add_menu_item(label="Edit", callback=lambda: _show_profile_dialog(state, is_edit=True))
 
         with dpg.menu(label="Settings"):
@@ -76,37 +76,45 @@ def build_menu_bar(state: UIState) -> None:
 def _open_user_guide(state: UIState) -> None:
     """Open the bundled user guide HTML file."""
     # Determine base path
+    # Check multiple locations
+    possible_paths = []
     if getattr(sys, 'frozen', False):
-        # Running as compiled executable
         base_path = Path(sys._MEIPASS)
-        # Adjust path based on how PyInstaller bundles it. 
-        # Usually resources are at the top level or inside the package folder.
-        # Trying package folder first
-        html_file = base_path / "cerebrus" / "resources" / "user_guide.html"
-        if not html_file.exists():
-             html_file = base_path / "resources" / "user_guide.html"
+        possible_paths.append(base_path / "cerebrus" / "resources" / "user_guide.html")
+        possible_paths.append(base_path / "resources" / "user_guide.html")
+        # Also check executable dir
+        exe_dir = Path(sys.executable).parent
+        possible_paths.append(exe_dir / "resources" / "user_guide.html")
     else:
-        # Running from source
         base_path = Path(__file__).resolve().parent.parent
-        html_file = base_path / "resources" / "user_guide.html"
+        possible_paths.append(base_path / "resources" / "user_guide.html")
     
-    if html_file.exists():
+    html_file = None
+    for path in possible_paths:
+        if path.exists():
+            html_file = path
+            break
+            
+    if html_file and html_file.exists():
         try:
             webbrowser.open(f"file:///{html_file.as_posix()}")
             log_message(state, "SUCCESS", "Opened User Guide")
         except Exception as e:
             log_message(state, "ERROR", f"Failed to open User Guide: {e}")
     else:
-        log_message(state, "ERROR", f"User Guide not found at: {html_file}")
+        log_message(state, "ERROR", "User Guide not found.")
+        # Try online fallback if needed, or just log error
 
 
 def _provide_feedback(state: UIState) -> None:
     """Open default mail client for feedback."""
     email = "engineering-enginetools@lightfurygames.com"
     subject = "[CEREBRUS][FEEDBACK]"
+    # Use Gmail compose link as requested
+    gmail_url = f"https://mail.google.com/mail/?view=cm&fs=1&to={email}&su={subject}"
     try:
-        webbrowser.open(f"mailto:{email}?subject={subject}")
-        log_message(state, "SUCCESS", "Opened mail client for feedback")
+        webbrowser.open(gmail_url)
+        log_message(state, "SUCCESS", "Opened Gmail for feedback")
     except Exception as e:
         log_message(state, "ERROR", f"Failed to open mail client: {e}")
 
@@ -1071,19 +1079,6 @@ def _register_file_dialogs(state: UIState) -> None:
         ):
             dpg.add_file_extension(".*")
 
-    if not dpg.does_item_exist("open_profile_dialog"):
-        with dpg.file_dialog(
-            directory_selector=False,
-            show=False,
-            callback=_handle_open_profile_selected,
-            user_data=state,
-            tag="open_profile_dialog",
-            width=600,
-            height=400,
-        ):
-            dpg.add_file_extension(".json", color=(0, 255, 0, 255))
-            dpg.add_file_extension(".*")
-
 
 def _handle_input_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
     # For directory selector, use file_path_name; for file selector, use selections
@@ -1198,9 +1193,6 @@ def _show_profile_dialog(state: UIState, is_edit: bool = False) -> None:
         with dpg.group(horizontal=True):
             dpg.add_button(label="Save", callback=lambda: _handle_profile_save(state, is_edit))
             dpg.add_button(label="Cancel", callback=lambda: dpg.delete_item("profile_dialog"))
-    
-    # Register dialogs for this modal
-    _register_profile_file_dialogs(state)
 
 
 def _handle_profile_save(state: UIState, is_edit: bool) -> None:
@@ -1244,14 +1236,12 @@ def _handle_profile_save(state: UIState, is_edit: bool) -> None:
     # For EDIT, only prompt if no path exists (shouldn't happen but safety check)
     if not is_edit or not state.profile_manager.current_profile_path:
         # This is a new profile - prompt for location
-        # Store nickname for default filename
-        state.temp_profile_nickname_for_save = nickname if nickname else "profile"
-        _show_file_dialog("save_profile_as_dialog")
         # Store the temp values to save after path selection
         state.temp_profile_data = {
             "nickname": nickname,
             "package_name": package_name,
         }
+        _save_profile_native(state, nickname)
     else:
         # Update existing profile
         profile = state.profile_manager.current_profile
@@ -1294,7 +1284,9 @@ def _save_current_profile(state: UIState) -> None:
         
         state.profile_manager.save_current_profile()
     else:
-        _show_file_dialog("save_profile_as_dialog")
+        # No current profile path, prompt to save as new
+        log_message(state, "INFO", "Please save profile with a name first")
+        _save_profile_native(state, state.profile_nickname or "profile")
 
 
 def _auto_save_profile(state: UIState) -> None:
@@ -1321,144 +1313,161 @@ def _auto_save_profile(state: UIState) -> None:
         state.profile_manager.save_current_profile()
 
 
-def _register_profile_file_dialogs(state: UIState) -> None:
-    if not dpg.does_item_exist("save_profile_as_dialog"):
-        # Get default filename from temp nickname if available
-        default_name = getattr(state, 'temp_profile_nickname_for_save', 'profile')
+
+
+def _save_profile_native(state: UIState, default_name: str) -> None:
+    """Open native save dialog for profile."""
+    try:
+        root = Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        
         default_filename = f"{default_name}.json" if default_name else "profile.json"
         
-        with dpg.file_dialog(
-            directory_selector=False,
-            show=False,
-            callback=_handle_save_profile_as_selected,
-            user_data=state,
-            tag="save_profile_as_dialog",
-            width=500,
-            height=400,
-            default_filename=default_filename,
-        ):
-             dpg.add_file_extension(".json", color=(0, 255, 0, 255))
+        file_path = filedialog.asksaveasfilename(
+            title="Save Profile As",
+            initialfile=default_filename,
+            defaultextension=".json",
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+        )
+        
+        root.destroy()
+        
+        if file_path:
+            path = Path(file_path)
+            _finalize_profile_save(state, path)
+            
+    except Exception as e:
+        log_message(state, "ERROR", f"Failed to open save dialog: {e}")
 
 
-def _handle_save_profile_as_selected(sender: int, app_data: dict, user_data: UIState) -> None:
-    selection = app_data.get("file_path_name") or next(iter(app_data.get("selections", {}).values()), None)
-    if not selection:
-        return
-    
-    path = Path(selection)
-    if not path.suffix:
-        path = path.with_suffix(".json")
-    
-    # Retrieve temp data if we came from the dialog
-    temp_data = getattr(user_data, "temp_profile_data", {})
-    
+def _open_profile_native(state: UIState) -> None:
+    """Open native open dialog for profile."""
+    try:
+        root = Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        
+        file_path = filedialog.askopenfilename(
+            title="Open Profile",
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+        )
+        
+        root.destroy()
+        
+        if file_path:
+            path = Path(file_path)
+            _load_profile_from_path(state, path)
+            
+    except Exception as e:
+        log_message(state, "ERROR", f"Failed to open file dialog: {e}")
+
+
+def _finalize_profile_save(state: UIState, path: Path) -> None:
+    """Complete profile creation after path selection."""
+    temp_data = getattr(state, "temp_profile_data", {})
     nickname = temp_data.get("nickname")
-    package_name = temp_data.get("package_name") or user_data.package_name
+    package_name = temp_data.get("package_name") or state.package_name
     
-    # Create profile
-    # Update state.output_file_name from UI
+    # Update state.output_file_name from UI if exists
     if dpg.does_item_exist("output_file_name"):
-        user_data.output_file_name = dpg.get_value("output_file_name")
+        state.output_file_name = dpg.get_value("output_file_name")
 
-    profile = user_data.profile_manager.create_new_profile(
+    profile = state.profile_manager.create_new_profile(
         nickname=nickname,
         package_name=package_name,
         path=path
     )
     # Populate fields
-    profile.output_file_name = user_data.output_file_name
-    profile.input_path = str(user_data.input_path)
-    profile.output_path = str(user_data.output_path)
-    profile.use_prefix_only = user_data.use_prefix_only
-    profile.append_device_to_path = user_data.append_device_to_path
+    profile.output_file_name = state.output_file_name
+    profile.input_path = str(state.input_path)
+    profile.output_path = str(state.output_path)
+    profile.use_prefix_only = state.use_prefix_only
+    profile.append_device_to_path = state.append_device_to_path
 
     profile.save(path)
     
-    log_message(user_data, "SUCCESS", f"New profile '{nickname}' created at {path}")
+    log_message(state, "SUCCESS", f"New profile '{nickname}' created at {path}")
 
     # Update UI
-    user_data.profile_nickname = nickname or "None"
-    user_data.package_name = package_name
-    user_data.profile_path = path
+    state.profile_nickname = nickname or "None"
+    state.package_name = package_name
+    state.profile_path = path
     
     if dpg.does_item_exist("profile_nickname_input"):
         dpg.set_value("profile_nickname_input", nickname or "None")
     if dpg.does_item_exist("profile_path_input"):
         dpg.set_value("profile_path_input", str(path))
-        # _update_profile_path_display(path) # Removed as we use labels now
     if dpg.does_item_exist("package_input"):
         dpg.set_value("package_input", package_name)
     
-    _update_profile_display_colors(user_data)
+    _update_profile_display_colors(state)
 
 
-def _handle_open_profile_selected(sender: int, app_data: dict, user_data: UIState) -> None:
-    selection = next(iter(app_data.get("selections", {}).values()), None)
-    if selection:
-        path = Path(selection)
-        try:
-            from cerebrus.core.profile import Profile
-            profile = Profile.load(path)
-            
-            # Validate that required fields exist
-            if not hasattr(profile, 'nickname') or not hasattr(profile, 'package_name'):
-                raise ValueError("Profile missing required fields")
-            
-            user_data.profile_manager.current_profile = profile
-            user_data.profile_manager.current_profile_path = path
-            user_data.profile_manager.set_last_used_profile_path(path)
-            
-            log_message(user_data, "SUCCESS", f"Profile loaded: {profile.nickname} from {path}")
+def _load_profile_from_path(state: UIState, path: Path) -> None:
+    try:
+        from cerebrus.core.profile import Profile
+        profile = Profile.load(path)
+        
+        # Validate that required fields exist
+        if not hasattr(profile, 'nickname') or not hasattr(profile, 'package_name'):
+            raise ValueError("Profile missing required fields")
+        
+        state.profile_manager.current_profile = profile
+        state.profile_manager.current_profile_path = path
+        state.profile_manager.set_last_used_profile_path(path)
+        
+        log_message(state, "SUCCESS", f"Profile loaded: {profile.nickname} from {path}")
 
-            # Update UI
-            user_data.profile_nickname = profile.nickname or "None"
-            user_data.package_name = profile.package_name
-            user_data.profile_path = path
+        # Update UI
+        state.profile_nickname = profile.nickname or "None"
+        state.package_name = profile.package_name
+        state.profile_path = path
+        
+        # Load persisted fields
+        state.output_file_name = profile.output_file_name
+        state.input_path = Path(profile.input_path) if profile.input_path else Path("")
+        state.output_path = Path(profile.output_path) if profile.output_path else Path("")
+        state.use_prefix_only = profile.use_prefix_only
+        state.append_device_to_path = profile.append_device_to_path
+        
+        # Update UI elements
+        if dpg.does_item_exist("package_input"):
+            dpg.set_value("package_input", profile.package_name)
+        
+        if dpg.does_item_exist("profile_nickname_input"):
+            dpg.set_value("profile_nickname_input", profile.nickname or "None")
+        
+        if dpg.does_item_exist("profile_path_input"):
+            dpg.set_value("profile_path_input", str(path))
             
-            # Load persisted fields
-            user_data.output_file_name = profile.output_file_name
-            user_data.input_path = Path(profile.input_path) if profile.input_path else Path("")
-            user_data.output_path = Path(profile.output_path) if profile.output_path else Path("")
-            user_data.use_prefix_only = profile.use_prefix_only
-            user_data.append_device_to_path = profile.append_device_to_path
+        if dpg.does_item_exist("output_file_name"):
+            dpg.set_value("output_file_name", state.output_file_name)
             
-            # Update UI elements
-            if dpg.does_item_exist("package_input"):
-                dpg.set_value("package_input", profile.package_name)
+        if dpg.does_item_exist("input_path_label"):
+            dpg.set_value("input_path_label", str(state.input_path))
             
-            if dpg.does_item_exist("profile_nickname_input"):
-                dpg.set_value("profile_nickname_input", profile.nickname or "None")
+        if dpg.does_item_exist("output_path_label"):
+            dpg.set_value("output_path_label", str(state.output_path))
             
-            if dpg.does_item_exist("profile_path_input"):
-                dpg.set_value("profile_path_input", str(path))
-                
-            if dpg.does_item_exist("output_file_name"):
-                dpg.set_value("output_file_name", user_data.output_file_name)
-                
-            if dpg.does_item_exist("input_path_label"):
-                dpg.set_value("input_path_label", str(user_data.input_path))
-                
-            if dpg.does_item_exist("output_path_label"):
-                dpg.set_value("output_path_label", str(user_data.output_path))
-                
-            if dpg.does_item_exist("use_prefix_only"):
-                dpg.set_value("use_prefix_only", user_data.use_prefix_only)
-                
-            if dpg.does_item_exist("append_device_to_path"):
-                dpg.set_value("append_device_to_path", user_data.append_device_to_path)
+        if dpg.does_item_exist("use_prefix_only"):
+            dpg.set_value("use_prefix_only", state.use_prefix_only)
             
-            _update_profile_display_colors(user_data)
-            
-        except (ValueError, KeyError, TypeError) as e:
-            # Invalid profile schema
-            filename = path.name if path else "Unknown"
-            log_message(user_data, "ERROR", f"{filename} is not a valid Profile. Please create a new profile or open a valid existing profile.")
-            print(f"Error loading profile: {e}")
-        except Exception as e:
-            # Other errors (file not found, JSON parse error, etc.)
-            filename = path.name if path else "Unknown"
-            log_message(user_data, "ERROR", f"Failed to load {filename}: {str(e)}")
-            print(f"Error loading profile: {e}")
+        if dpg.does_item_exist("append_device_to_path"):
+            dpg.set_value("append_device_to_path", state.append_device_to_path)
+        
+        _update_profile_display_colors(state)
+        
+    except (ValueError, KeyError, TypeError) as e:
+        # Invalid profile schema
+        filename = path.name if path else "Unknown"
+        log_message(state, "ERROR", f"{filename} is not a valid Profile. Please create a new profile or open a valid existing profile.")
+        print(f"Error loading profile: {e}")
+    except Exception as e:
+        # Other errors (file not found, JSON parse error, etc.)
+        filename = path.name if path else "Unknown"
+        log_message(state, "ERROR", f"Failed to load {filename}: {str(e)}")
+        print(f"Error loading profile: {e}")
 
 def _update_profile_display_colors(state: UIState) -> None:
     """Update the display colors for profile labels based on whether it's default or loaded."""
