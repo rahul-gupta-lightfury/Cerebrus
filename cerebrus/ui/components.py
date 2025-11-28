@@ -20,6 +20,23 @@ LOG_LEVEL_COLORS = {
     "SUCCESS": (15, 240, 15),
 }
 
+# Tooltip definitions
+TOOLTIPS = {
+    "output_file_name": "The name to use for output files. This will be used as the filename or prefix depending on the 'Use as Prefix only' setting.",
+    "use_prefix_only": "When enabled, the Output File Name will be used as a prefix with device-specific information appended. When disabled, it will be used as the exact filename.",
+    "input_path": "The folder path where files will be moved from the device. CSV and Logs subfolders will be created here.",
+    "output_path": "The destination folder where processed reports and logs will be saved.",
+    "append_device": "When enabled, a subfolder with the device make and model will be automatically created in the output path.",
+    "move_logs": "Moves log files from the selected device's Unreal Engine Saved/Logs folder to your PC.",
+    "move_csv": "Moves CSV profiling data from the selected device's Unreal Engine Saved/Profiling/CSV folder to your PC.",
+    "generate_perf": "Processes CSV files in the Move Files Folder Path using PerfreportTool.exe and generates performance reports in the Output Folder Path. CSV files are deleted after successful processing.",
+    "generate_logs": "Converts text log files (.log, .txt) from the Move Files Folder Path to colored HTML format in the Output Folder Path. Source files are deleted after successful conversion.",
+    "generate_both": "Runs both Perf Report generation and Colored Logs conversion in sequence.",
+    "package_name": "The Android package identifier for your application (e.g., com.company.appname). Must start with 'com.' and have at least 3 parts.",
+    "device_table": "Lists all connected Android devices. Select a device to perform operations. Only devices with the package installed can be selected.",
+    "list_devices": "Scans for connected Android devices via ADB and checks if the specified package is installed on each device.",
+}
+
 
 def build_menu_bar(state: UIState) -> None:
     """Render the top menu bar."""
@@ -80,18 +97,15 @@ def build_profile_summary(state: UIState) -> None:
         # Use warning color for default profile, green for loaded profiles
         profile_color = (255, 210, 120) if not state.profile_manager.current_profile_path else (150, 255, 150)
         dpg.add_text(tag="profile_nickname_input", default_value=state.profile_nickname, color=profile_color)
-        dpg.add_text("Profile Path:")
-        dpg.add_text(tag="profile_path_input", default_value=str(state.profile_path), color=profile_color)
         dpg.add_text("Package Name:")
         dpg.add_text(
             tag="package_input",
             default_value=state.package_name,
             color=profile_color,
         )
-        # Initial width adjustment for profile path - No longer needed for text labels as they auto-size? 
-        # But we might want to keep it if we want to truncate or something. 
-        # Text items auto-size, so we can remove the width adjustment logic or keep it if we wrap it.
-        # Let's remove the width adjustment call for now as text labels don't have 'width' in the same way.
+        _add_help_button("package_name")
+        dpg.add_text("Profile Path:")
+        dpg.add_text(tag="profile_path_input", default_value=str(state.profile_path), color=profile_color)
 
 
 def build_device_controls(state: UIState) -> None:
@@ -99,7 +113,9 @@ def build_device_controls(state: UIState) -> None:
     dpg.add_separator()
     with dpg.group(horizontal=True, horizontal_spacing=8):
         dpg.add_text("Device(s)", color=(120, 180, 255))
+        _add_help_button("device_table")
         dpg.add_button(label="List Devices", width=120, callback=lambda: _populate_devices(state))
+        _add_help_button("list_devices")
 
     with dpg.child_window(border=False, autosize_x=True, height=220, tag="device_table_container"):
         _render_device_table(state)
@@ -116,7 +132,9 @@ def build_file_actions(state: UIState) -> None:
             dpg.add_table_column(width_fixed=True, init_width_or_weight=180)
 
             with dpg.table_row():
-                dpg.add_text("Output file Name:")
+                with dpg.group(horizontal=True):
+                    dpg.add_text("Output file Name:")
+                    _add_help_button("output_file_name")
                 dpg.add_input_text(
                     tag="output_file_name",
                     default_value=state.output_file_name,
@@ -124,16 +142,20 @@ def build_file_actions(state: UIState) -> None:
                     callback=_handle_output_file_name_change,
                     user_data=state,
                 )
-                dpg.add_checkbox(
-                    tag="use_prefix_only",
-                    label="Use as Prefix only",
-                    default_value=state.use_prefix_only,
-                    callback=_handle_use_prefix_toggle,
-                    user_data=state,
-                )
+                with dpg.group(horizontal=True):
+                    dpg.add_checkbox(
+                        tag="use_prefix_only",
+                        label="Use as Prefix only",
+                        default_value=state.use_prefix_only,
+                        callback=_handle_use_prefix_toggle,
+                        user_data=state,
+                    )
+                    _add_help_button("use_prefix_only")
 
             with dpg.table_row():
-                dpg.add_text("Move Files Folder Path:")
+                with dpg.group(horizontal=True):
+                    dpg.add_text("Move Files Folder Path:")
+                    _add_help_button("input_path")
                 dpg.add_input_text(
                     tag="input_path_label",
                     default_value=str(state.input_path),
@@ -147,7 +169,9 @@ def build_file_actions(state: UIState) -> None:
                 )
 
             with dpg.table_row():
-                dpg.add_text("Output Folder Path:")
+                with dpg.group(horizontal=True):
+                    dpg.add_text("Output Folder Path:")
+                    _add_help_button("output_path")
                 dpg.add_input_text(
                     tag="output_path_label",
                     default_value=str(state.output_path),
@@ -161,7 +185,9 @@ def build_file_actions(state: UIState) -> None:
                 )
 
             with dpg.table_row():
-                dpg.add_text("Append Device Make and Model to Output Path:")
+                with dpg.group(horizontal=True):
+                    dpg.add_text("Append Device Make and Model to Output Path:")
+                    _add_help_button("append_device")
                 dpg.add_spacer()
                 dpg.add_checkbox(
                     tag="append_device_to_path",
@@ -172,16 +198,26 @@ def build_file_actions(state: UIState) -> None:
                 )
 
         with dpg.group(horizontal=True, horizontal_spacing=12):
-            with dpg.child_window(border=True, autosize_y=True, width=260):
-                dpg.add_text("From Phone to PC", color=(200, 200, 200))
-                dpg.add_button(label="Move logs", width=200, callback=lambda: _handle_move_logs(state))
-                dpg.add_button(label="Move CSV data", width=200, callback=lambda: _handle_move_csv(state))
+            with dpg.child_window(border=True, autosize_y=True, width=360):
+                dpg.add_text("Bulk Actions From Selected Phone to PC", color=(200, 200, 200))
+                with dpg.group(horizontal=True):
+                    dpg.add_button(label="Move logs", width=200, callback=lambda: _handle_move_logs(state))
+                    _add_help_button("move_logs")
+                with dpg.group(horizontal=True):
+                    dpg.add_button(label="Move CSV data", width=200, callback=lambda: _handle_move_csv(state))
+                    _add_help_button("move_csv")
 
-            with dpg.child_window(border=True, autosize_y=True, width=350):
-                dpg.add_text("From PC TO PC", color=(200, 200, 200))
-                dpg.add_button(label="Generate Perf Report Only", width=300, callback=lambda: _handle_generate_perf_report(state))
-                dpg.add_button(label="Generate Colored Logs Only", width=300, callback=lambda: _handle_generate_colored_logs(state))
-                dpg.add_button(label="Generate Perf Report + Colored Logs", width=300)
+            with dpg.child_window(border=True, autosize_y=True, width=420):
+                dpg.add_text("Bulk Actions From PC to PC", color=(200, 200, 200))
+                with dpg.group(horizontal=True):
+                    dpg.add_button(label="Generate Perf Report Only", width=300, callback=lambda: _handle_generate_perf_report(state))
+                    _add_help_button("generate_perf")
+                with dpg.group(horizontal=True):
+                    dpg.add_button(label="Generate Colored Logs Only", width=300, callback=lambda: _handle_generate_colored_logs(state))
+                    _add_help_button("generate_logs")
+                with dpg.group(horizontal=True):
+                    dpg.add_button(label="Generate Perf Report + Colored Logs", width=300)
+                    _add_help_button("generate_both")
 
     dpg.add_separator()
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=200):
@@ -1140,4 +1176,14 @@ def _update_profile_path_display(path: Path) -> None:
     # User said "Should auto adjust the size for the complete path to be visible."
     # Labels auto-adjust.
     pass
+
+
+def _add_help_button(tooltip_key: str) -> None:
+    """Add a small '?' help button with tooltip."""
+    tooltip_text = TOOLTIPS.get(tooltip_key, "No help available.")
+    button = dpg.add_button(label="?", width=20, height=20, callback=lambda: None)
+    
+    with dpg.tooltip(button):
+        # Wrap text to max width for readability
+        dpg.add_text(tooltip_text, wrap=400)
 
