@@ -3,10 +3,18 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$LogFile = "$env:TEMP\cerebrus_install_debug.txt"
 
 function Write-Log($message) {
-    Write-Host "[DependencyInstaller] $message" -ForegroundColor Cyan
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logMsg = "[$timestamp] [DependencyInstaller] $message"
+    Write-Host $logMsg -ForegroundColor Cyan
+    Add-Content -Path $LogFile -Value $logMsg
 }
+
+Write-Log "Starting dependency check..."
+Write-Log "Running as user: $env:USERNAME"
+
 
 function Ensure-WingetAvailable {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {

@@ -120,6 +120,10 @@ jobs:
                        & $adbSearch.FullName version
                   } else {
                       Write-Error "ADB command not found and could not be located."
+                      if (Test-Path "$env:TEMP\cerebrus_install_debug.txt") {
+                          Write-Host "Content of installation debug log:"
+                          Get-Content "$env:TEMP\cerebrus_install_debug.txt"
+                      }
                       exit 1
                   }
               }
