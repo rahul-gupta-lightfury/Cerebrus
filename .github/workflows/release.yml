@@ -83,12 +83,47 @@ jobs:
           }
           Write-Host "Validation Passed: Dependency script bundled correctly."
           
+          # Refresh environment variables to pick up PATH changes from the installer
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          
           # 3. Verify commands (sanity check)
           Write-Host "Checking Python command..."
           python --version
           
           Write-Host "Checking ADB command..."
-          adb version
+          if (Get-Command adb -ErrorAction SilentlyContinue) {
+              adb version
+          } else {
+              Write-Warning "ADB not found in PATH after refresh. Attempting to locate..."
+              # Common winget/Android locations
+              $possiblePaths = @(
+                  "$env:LOCALAPPDATA\Microsoft\WinGet\Links\adb.exe",
+                  "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe",
+                  "$env:ProgramFiles\Android\android-sdk\platform-tools\adb.exe"
+              )
+              
+              $adbFound = $false
+              foreach ($path in $possiblePaths) {
+                  if (Test-Path $path) {
+                      Write-Host "Found ADB at $path"
+                      & $path version
+                      $adbFound = $true
+                      break
+                  }
+              }
+              
+              if (-not $adbFound) {
+                  # Last ditch search
+                  $adbSearch = Get-ChildItem -Path $env:LOCALAPPDATA -Filter "adb.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                  if ($adbSearch) {
+                       Write-Host "Found ADB at $($adbSearch.FullName)"
+                       & $adbSearch.FullName version
+                  } else {
+                      Write-Error "ADB command not found and could not be located."
+                      exit 1
+                  }
+              }
+          }
 
 
       - name: Upload installer artifacts
