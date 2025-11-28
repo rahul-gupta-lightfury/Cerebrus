@@ -17,7 +17,10 @@ from cerebrus.ui.themes import get_theme_manager
 from cerebrus._version import __version__
 
 
+
 # Log colors are now handled by ThemeManager
+SELECTED_ROW_COLOR = (0, 119, 200, 153)  # Blue highlight with transparency
+
 
 
 # Tooltip definitions
@@ -25,7 +28,7 @@ TOOLTIPS = {
     "output_file_name": "The name to use for output files. This will be used as the filename or prefix depending on the 'Use as Prefix only' setting.",
     "use_prefix_only": "When enabled, the Output File Name will be used as a prefix with device-specific information appended. When disabled, it will be used as the exact filename.",
     "input_path": "The folder path where files will be moved from the device. CSV and Logs subfolders will be created here.",
-    "output_path": "The destination folder where processed reports and logs will be saved.",
+    "output_path": "The main workspace folder. Files moved from devices will be saved here, and generated reports will be output here.",
     "append_device": "When enabled, a subfolder with the device make and model will be automatically created in the output path.",
     "move_logs": "Moves log files from the selected device's Unreal Engine Saved/Logs folder to your PC.",
     "move_csv": "Moves CSV profiling data from the selected device's Unreal Engine Saved/Profiling/CSV folder to your PC.",
@@ -240,28 +243,7 @@ def build_file_actions(state: UIState) -> None:
 
             with dpg.table_row():
                 with dpg.group(horizontal=True, horizontal_spacing=4):
-                    dpg.add_text("Move Files Folder Path:")
-                    _add_help_button("input_path")
-                dpg.add_input_text(
-                    tag="input_path_label",
-                    default_value=str(state.input_path),
-                    width=-1,
-                    readonly=True,
-                )
-                dpg.add_button(
-                    label="Browse",
-                    width=-1,
-                    callback=lambda: _browse_folder_native(state, "input"),
-                )
-                dpg.add_button(
-                    label="Open Folder",
-                    width=-1,
-                    callback=lambda: _open_folder_in_explorer(state.input_path),
-                )
-
-            with dpg.table_row():
-                with dpg.group(horizontal=True, horizontal_spacing=4):
-                    dpg.add_text("Output Folder Path:")
+                    dpg.add_text("Output Path:")
                     _add_help_button("output_path")
                 dpg.add_input_text(
                     tag="output_path_label",
@@ -280,19 +262,6 @@ def build_file_actions(state: UIState) -> None:
                     callback=lambda: _open_folder_in_explorer(state.output_path),
                 )
 
-            with dpg.table_row():
-                with dpg.group(horizontal=True, horizontal_spacing=4):
-                    dpg.add_text("Append Device Make and Model to Output Path:")
-                    _add_help_button("append_device")
-                dpg.add_spacer()
-                dpg.add_checkbox(
-                    tag="append_device_to_path",
-                    label="",
-                    default_value=False,
-                    callback=_handle_append_device_toggle,
-                    user_data=state,
-                )
-                dpg.add_spacer()
 
         with dpg.group(horizontal=True, horizontal_spacing=12):
             with dpg.child_window(border=True, autosize_y=True, width=360):
@@ -371,44 +340,6 @@ def _handle_use_prefix_toggle(sender: int, app_data: bool, user_data: UIState) -
     user_data.use_prefix_only = bool(app_data)
     _auto_save_profile(user_data)
 
-
-def _handle_append_device_toggle(sender: int, app_data: bool, user_data: UIState) -> None:
-    user_data.append_device_to_path = bool(app_data)
-    
-    # Store base path if not already stored
-    if user_data.base_output_path is None:
-        user_data.base_output_path = user_data.output_path
-    
-    # Get the selected device
-    selected_device = None
-    if user_data.selected_device_serial:
-        for device in user_data.devices:
-            if device.serial == user_data.selected_device_serial:
-                selected_device = device
-                break
-    
-    if not selected_device:
-        if app_data:
-            log_message(user_data, "INFO", "Device Make/Model will be appended when a device is selected.")
-        _auto_save_profile(user_data)
-        return
-    
-    if app_data:  # Checkbox is checked
-        # Append device make and model
-        device_folder = f"{selected_device.make}_{selected_device.model}"
-        new_path = user_data.base_output_path / device_folder
-        user_data.output_path = new_path
-        if dpg.does_item_exist("output_path_label"):
-            dpg.set_value("output_path_label", str(new_path))
-        log_message(user_data, "INFO", f"Output path updated: {new_path}")
-    else:  # Checkbox is unchecked
-        # Restore base path
-        user_data.output_path = user_data.base_output_path
-        if dpg.does_item_exist("output_path_label"):
-            dpg.set_value("output_path_label", str(user_data.base_output_path))
-        log_message(user_data, "INFO", f"Output path restored: {user_data.base_output_path}")
-    
-    _auto_save_profile(user_data)
 
 
 def _handle_move_csv(state: UIState) -> None:
@@ -1124,6 +1055,9 @@ def _handle_output_path_selected(sender: int, app_data: dict, user_data: UIState
     else:
         user_data.output_path = new_base_path
 
+    # Sync input path with output path
+    user_data.input_path = user_data.output_path
+
     if dpg.does_item_exist("output_path_label"):
         dpg.set_value("output_path_label", str(user_data.output_path))
         
@@ -1453,9 +1387,7 @@ def _load_profile_from_path(state: UIState, path: Path) -> None:
         if dpg.does_item_exist("use_prefix_only"):
             dpg.set_value("use_prefix_only", state.use_prefix_only)
             
-        if dpg.does_item_exist("append_device_to_path"):
-            dpg.set_value("append_device_to_path", state.append_device_to_path)
-        
+
         _update_profile_display_colors(state)
         
     except (ValueError, KeyError, TypeError) as e:

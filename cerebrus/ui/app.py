@@ -22,10 +22,16 @@ class CerebrusApp:
         # Load persisted fields from profile into state
         if profile:
             self.state.output_file_name = profile.output_file_name
-            self.state.input_path = Path(profile.input_path) if profile.input_path else Path("/path/to/input")
-            self.state.output_path = Path(profile.output_path) if profile.output_path else Path("/path/to/output")
+            self.state.input_path = Path(profile.input_path) if profile.input_path else Path("C:/")
+            self.state.output_path = Path(profile.output_path) if profile.output_path else Path("C:/")
             self.state.use_prefix_only = profile.use_prefix_only
-            self.state.append_device_to_path = profile.append_device_to_path
+            self.state.append_device_to_path = True  # Always enabled now
+            
+            # Fix for legacy default paths or placeholders
+            path_str = str(self.state.output_path).replace("\\", "/")
+            if "path/to/output" in path_str:
+                self.state.output_path = Path("C:/")
+                self.state.input_path = Path("C:/")
 
     def build(self) -> None:
         dpg.create_context()
@@ -36,6 +42,13 @@ class CerebrusApp:
         
         components.setup_fonts()
         components.log_message(self.state, "INFO", "Cerebrus App Loaded")
+        
+        # Check environment
+        from cerebrus.core.setup import check_and_setup_environment
+        # Run in background or just run? It might block UI. 
+        # For now, run synchronously as it's critical.
+        check_and_setup_environment(lambda level, msg: components.log_message(self.state, level, msg))
+        
         if self.state.profile_path and str(self.state.profile_path) != "No profile loaded":
              components.log_message(self.state, "INFO", f"Last used profile loaded: {self.state.profile_nickname}")
         with dpg.window(tag="MainWindow", label="Cerebrus - An Unreal Engine Perf Report UI Toolkit", width=1100, height=750):

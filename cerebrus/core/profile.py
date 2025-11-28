@@ -13,10 +13,10 @@ class Profile:
     nickname: Optional[str] = None
     package_name: str = ""
     output_file_name: str = "perf_report"
-    input_path: str = ""
-    output_path: str = ""
+    input_path: str = "C:/"
+    output_path: str = "C:/"
     use_prefix_only: bool = False
-    append_device_to_path: bool = False
+    append_device_to_path: bool = True
 
     def validate(self) -> list[str]:
         errors = []

@@ -4,10 +4,12 @@ Python-based Windows-only toolkit with a Dear ImGui UI for managing Unreal Engin
 
 Cerebrus orchestrates:
 - Device discovery and Android workload management.
+- Automatic ADB environment setup and verification.
 - Retrieval of logcat logs, CSV profiling data, and Insights captures.
+- Simplified "Output Path" workspace management with automatic device-specific folder organization.
 - Per-project configuration and caching.
 - CSV- and PerfReport-based reporting flows using Unreal Engine's CsvTools and PerfReportTool.
-- Theme configuration and a stable one-click installer.
+- Theme configuration (Standard, High Contrast, Color Blind modes) and a stable one-click installer.
 
 > Note: This repository assumes you already have Unreal Engine binaries available for:
 > - UAFT (Unreal Android File Tool)

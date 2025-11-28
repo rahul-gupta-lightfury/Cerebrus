@@ -319,6 +319,7 @@ summary_json/
 svg/
 *.svg
 *.html
+!user_guide.html
 
 # PerfReportTool caches
 *.csv.cache
