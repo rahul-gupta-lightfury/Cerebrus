@@ -29,6 +29,7 @@ class CerebrusApp:
 
     def build(self) -> None:
         dpg.create_context()
+        components.setup_fonts()
         components.log_message(self.state, "INFO", "Cerebrus App Loaded")
         if self.state.profile_path and str(self.state.profile_path) != "No profile loaded":
              components.log_message(self.state, "INFO", f"Last used profile loaded: {self.state.profile_nickname}")

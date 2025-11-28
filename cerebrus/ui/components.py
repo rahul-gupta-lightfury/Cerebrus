@@ -4,6 +4,9 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 import sys
+import webbrowser
+import os
+from tkinter import Tk, filedialog
 
 import dearpygui.dearpygui as dpg
 
@@ -32,6 +35,7 @@ TOOLTIPS = {
     "generate_perf": "Processes CSV files in the Move Files Folder Path using PerfreportTool.exe and generates performance reports in the Output Folder Path. CSV files are deleted after successful processing.",
     "generate_logs": "Converts text log files (.log, .txt) from the Move Files Folder Path to colored HTML format in the Output Folder Path. Source files are deleted after successful conversion.",
     "generate_both": "Runs both Perf Report generation and Colored Logs conversion in sequence.",
+    "view_html_logs": "Opens the Output Folder Path and allows you to select and view generated HTML log files in your default web browser.",
     "package_name": "The Android package identifier for your application (e.g., com.company.appname). Must start with 'com.' and have at least 3 parts.",
     "device_table": "Lists all connected Android devices. Select a device to perform operations. Only devices with the package installed can be selected.",
     "list_devices": "Scans for connected Android devices via ADB and checks if the specified package is installed on each device.",
@@ -124,15 +128,16 @@ def build_device_controls(state: UIState) -> None:
 def build_file_actions(state: UIState) -> None:
     """Render file copy actions and reporting panels."""
     dpg.add_separator()
-    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=240):
+    with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=320):
         dpg.add_text("Data and Perf Report", color=(120, 180, 255))
         with dpg.table(header_row=False, policy=dpg.mvTable_SizingStretchProp):
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=320)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=350)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=180)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=360)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=280)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=200)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=120)
 
             with dpg.table_row():
-                with dpg.group(horizontal=True):
+                with dpg.group(horizontal=True, horizontal_spacing=4):
                     dpg.add_text("Output file Name:")
                     _add_help_button("output_file_name")
                 dpg.add_input_text(
@@ -142,18 +147,19 @@ def build_file_actions(state: UIState) -> None:
                     callback=_handle_output_file_name_change,
                     user_data=state,
                 )
-                with dpg.group(horizontal=True):
+                with dpg.group(horizontal=True, horizontal_spacing=4):
                     dpg.add_checkbox(
                         tag="use_prefix_only",
-                        label="Use as Prefix only",
+                        label="Use as Prefix Only",
                         default_value=state.use_prefix_only,
                         callback=_handle_use_prefix_toggle,
                         user_data=state,
                     )
                     _add_help_button("use_prefix_only")
+                dpg.add_spacer()
 
             with dpg.table_row():
-                with dpg.group(horizontal=True):
+                with dpg.group(horizontal=True, horizontal_spacing=4):
                     dpg.add_text("Move Files Folder Path:")
                     _add_help_button("input_path")
                 dpg.add_input_text(
@@ -165,11 +171,16 @@ def build_file_actions(state: UIState) -> None:
                 dpg.add_button(
                     label="Browse",
                     width=-1,
-                    callback=lambda: _show_file_dialog("input_path_dialog"),
+                    callback=lambda: _browse_folder_native(state, "input"),
+                )
+                dpg.add_button(
+                    label="Open Folder",
+                    width=-1,
+                    callback=lambda: _open_folder_in_explorer(state.input_path),
                 )
 
             with dpg.table_row():
-                with dpg.group(horizontal=True):
+                with dpg.group(horizontal=True, horizontal_spacing=4):
                     dpg.add_text("Output Folder Path:")
                     _add_help_button("output_path")
                 dpg.add_input_text(
@@ -181,11 +192,16 @@ def build_file_actions(state: UIState) -> None:
                 dpg.add_button(
                     label="Browse",
                     width=-1,
-                    callback=lambda: _show_file_dialog("output_path_dialog"),
+                    callback=lambda: _browse_folder_native(state, "output"),
+                )
+                dpg.add_button(
+                    label="Open Folder",
+                    width=-1,
+                    callback=lambda: _open_folder_in_explorer(state.output_path),
                 )
 
             with dpg.table_row():
-                with dpg.group(horizontal=True):
+                with dpg.group(horizontal=True, horizontal_spacing=4):
                     dpg.add_text("Append Device Make and Model to Output Path:")
                     _add_help_button("append_device")
                 dpg.add_spacer()
@@ -196,28 +212,44 @@ def build_file_actions(state: UIState) -> None:
                     callback=_handle_append_device_toggle,
                     user_data=state,
                 )
+                dpg.add_spacer()
 
         with dpg.group(horizontal=True, horizontal_spacing=12):
             with dpg.child_window(border=True, autosize_y=True, width=360):
                 dpg.add_text("Bulk Actions From Selected Phone to PC", color=(200, 200, 200))
-                with dpg.group(horizontal=True):
-                    dpg.add_button(label="Move logs", width=200, callback=lambda: _handle_move_logs(state))
-                    _add_help_button("move_logs")
-                with dpg.group(horizontal=True):
-                    dpg.add_button(label="Move CSV data", width=200, callback=lambda: _handle_move_csv(state))
-                    _add_help_button("move_csv")
+                with dpg.table(header_row=False, policy=dpg.mvTable_SizingFixedFit):
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=210)
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=30)
+                    
+                    with dpg.table_row():
+                        dpg.add_button(label="Move logs", width=200, callback=lambda: _handle_move_logs(state))
+                        _add_help_button("move_logs")
+                    
+                    with dpg.table_row():
+                        dpg.add_button(label="Move CSV data", width=200, callback=lambda: _handle_move_csv(state))
+                        _add_help_button("move_csv")
 
-            with dpg.child_window(border=True, autosize_y=True, width=420):
+            with dpg.child_window(border=True, autosize_y=True, width=460):
                 dpg.add_text("Bulk Actions From PC to PC", color=(200, 200, 200))
-                with dpg.group(horizontal=True):
-                    dpg.add_button(label="Generate Perf Report Only", width=300, callback=lambda: _handle_generate_perf_report(state))
-                    _add_help_button("generate_perf")
-                with dpg.group(horizontal=True):
-                    dpg.add_button(label="Generate Colored Logs Only", width=300, callback=lambda: _handle_generate_colored_logs(state))
-                    _add_help_button("generate_logs")
-                with dpg.group(horizontal=True):
-                    dpg.add_button(label="Generate Perf Report + Colored Logs", width=300)
-                    _add_help_button("generate_both")
+                with dpg.table(header_row=False, policy=dpg.mvTable_SizingFixedFit):
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=310)
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=30)
+                    
+                    with dpg.table_row():
+                        dpg.add_button(label="Generate Perf Report Only", width=300, callback=lambda: _handle_generate_perf_report(state))
+                        _add_help_button("generate_perf")
+                    
+                    with dpg.table_row():
+                        dpg.add_button(label="Generate Colored Logs Only", width=300, callback=lambda: _handle_generate_colored_logs(state))
+                        _add_help_button("generate_logs")
+                    
+                    with dpg.table_row():
+                        dpg.add_button(label="Generate Perf Report + Colored Logs", width=300)
+                        _add_help_button("generate_both")
+                    
+                    with dpg.table_row():
+                        dpg.add_button(label="View HTML Logs", width=300, callback=lambda: _handle_view_html_logs(state))
+                        _add_help_button("view_html_logs")
 
     dpg.add_separator()
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=200):
@@ -468,6 +500,100 @@ def _handle_generate_colored_logs(state: UIState) -> None:
             log_message(state, "ERROR", f"Exception while converting {log_file.name}: {e}")
 
     log_message(state, "INFO", "Log conversion completed.")
+
+
+def _handle_view_html_logs(state: UIState) -> None:
+    """Open HTML log files in the default web browser."""
+    # Output directory: {Output Folder Path}
+    output_dir = state.output_path
+    if not output_dir.exists():
+        log_message(state, "ERROR", f"Output directory not found: {output_dir}")
+        return
+
+    # Find all HTML files in the output directory
+    html_files = list(output_dir.glob("*.html"))
+    
+    if not html_files:
+        log_message(state, "WARNING", f"No HTML files found in {output_dir}")
+        log_message(state, "INFO", "Generate colored logs first to create HTML files.")
+        return
+
+    # Sort by modification time (newest first)
+    html_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+    
+    log_message(state, "INFO", f"Found {len(html_files)} HTML file(s) in {output_dir}")
+    
+    # Show a dialog to select which HTML file to open
+    _show_html_file_selector(state, html_files)
+
+
+def _show_html_file_selector(state: UIState, html_files: list) -> None:
+    """Show a dialog to select and open HTML files."""
+    if dpg.does_item_exist("html_viewer_dialog"):
+        dpg.delete_item("html_viewer_dialog")
+    
+    with dpg.window(tag="html_viewer_dialog", label="Select HTML Log to View", modal=True, width=600, height=400):
+        dpg.add_text("Available HTML Log Files:", color=(120, 180, 255))
+        dpg.add_separator()
+        
+        with dpg.child_window(border=True, autosize_x=True, height=280):
+            for html_file in html_files:
+                # Get file modification time
+                from datetime import datetime
+                mtime = datetime.fromtimestamp(html_file.stat().st_mtime)
+                time_str = mtime.strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Create a button for each file
+                with dpg.group(horizontal=True):
+                    dpg.add_button(
+                        label=f"📄 {html_file.name}",
+                        width=400,
+                        callback=lambda s, a, u: _open_html_file(state, u),
+                        user_data=html_file
+                    )
+                    dpg.add_text(f"Modified: {time_str}", color=(150, 150, 150))
+        
+        dpg.add_separator()
+        with dpg.group(horizontal=True):
+            dpg.add_button(
+                label="Open All",
+                width=120,
+                callback=lambda: _open_all_html_files(state, html_files)
+            )
+            dpg.add_button(
+                label="Close",
+                width=120,
+                callback=lambda: dpg.delete_item("html_viewer_dialog")
+            )
+
+
+def _open_html_file(state: UIState, html_file: Path) -> None:
+    """Open a single HTML file in the default web browser."""
+    try:
+        # Use webbrowser module (part of Python standard library)
+        webbrowser.open(f"file:///{html_file.as_posix()}")
+        log_message(state, "SUCCESS", f"Opened {html_file.name} in browser")
+    except Exception as e:
+        log_message(state, "ERROR", f"Failed to open {html_file.name}: {e}")
+
+
+def _open_all_html_files(state: UIState, html_files: list) -> None:
+    """Open all HTML files in the default web browser."""
+    opened_count = 0
+    for html_file in html_files:
+        try:
+            webbrowser.open(f"file:///{html_file.as_posix()}")
+            opened_count += 1
+        except Exception as e:
+            log_message(state, "ERROR", f"Failed to open {html_file.name}: {e}")
+    
+    if opened_count > 0:
+        log_message(state, "SUCCESS", f"Opened {opened_count} HTML file(s) in browser")
+    
+    # Close the dialog
+    if dpg.does_item_exist("html_viewer_dialog"):
+        dpg.delete_item("html_viewer_dialog")
+
 
 
 def _move_files_from_device(state: UIState, source_subpath: str, dest_subpath: str) -> None:
@@ -740,6 +866,81 @@ def _select_device_row(row_index: int, state: UIState) -> None:
 def _show_file_dialog(tag: str) -> None:
     if dpg.does_item_exist(tag):
         dpg.configure_item(tag, show=True)
+
+
+def _browse_folder_native(state: UIState, path_type: str) -> None:
+    """Open native Windows folder browser dialog."""
+    try:
+        # Create a hidden Tk root window
+        root = Tk()
+        root.withdraw()  # Hide the main window
+        root.attributes('-topmost', True)  # Bring dialog to front
+        
+        # Get initial directory
+        if path_type == "input":
+            initial_dir = str(state.input_path) if state.input_path.exists() else str(Path.home())
+        else:  # output
+            initial_dir = str(state.output_path) if state.output_path.exists() else str(Path.home())
+        
+        # Show folder selection dialog
+        folder_path = filedialog.askdirectory(
+            title=f"Select {'Input' if path_type == 'input' else 'Output'} Folder",
+            initialdir=initial_dir
+        )
+        
+        root.destroy()  # Clean up
+        
+        if folder_path:  # User selected a folder
+            selected_path = Path(folder_path)
+            
+            if path_type == "input":
+                state.input_path = selected_path
+                if dpg.does_item_exist("input_path_label"):
+                    dpg.set_value("input_path_label", str(selected_path))
+                log_message(state, "SUCCESS", f"Input path set to: {selected_path}")
+                _auto_save_profile(state)
+            else:  # output
+                # Update base path
+                state.base_output_path = selected_path
+                
+                # Check if we need to append device info
+                if state.append_device_to_path and state.selected_device_serial:
+                    # Find the selected device
+                    selected_device = None
+                    for device in state.devices:
+                        if device.serial == state.selected_device_serial:
+                            selected_device = device
+                            break
+                    
+                    if selected_device:
+                        device_folder = f"{selected_device.make}_{selected_device.model}"
+                        state.output_path = selected_path / device_folder
+                    else:
+                        state.output_path = selected_path
+                else:
+                    state.output_path = selected_path
+                
+                if dpg.does_item_exist("output_path_label"):
+                    dpg.set_value("output_path_label", str(state.output_path))
+                log_message(state, "SUCCESS", f"Output path set to: {state.output_path}")
+                _auto_save_profile(state)
+                
+    except Exception as e:
+        log_message(state, "ERROR", f"Failed to open folder browser: {e}")
+
+
+def _open_folder_in_explorer(folder_path: Path) -> None:
+    """Open a folder in Windows Explorer."""
+    try:
+        if not folder_path.exists():
+            # Try to create the folder
+            folder_path.mkdir(parents=True, exist_ok=True)
+        
+        # Open in Windows Explorer
+        os.startfile(str(folder_path))
+    except Exception as e:
+        # If folder doesn't exist or can't be opened, log error
+        print(f"Failed to open folder: {e}")
 
 
 def _register_file_dialogs(state: UIState) -> None:
@@ -1158,7 +1359,6 @@ def _handle_open_profile_selected(sender: int, app_data: dict, user_data: UIStat
             log_message(user_data, "ERROR", f"Failed to load {filename}: {str(e)}")
             print(f"Error loading profile: {e}")
 
-
 def _update_profile_display_colors(state: UIState) -> None:
     """Update the display colors for profile labels based on whether it's default or loaded."""
     profile_color = (255, 210, 120) if not state.profile_manager.current_profile_path else (150, 255, 150)
@@ -1178,12 +1378,26 @@ def _update_profile_path_display(path: Path) -> None:
     pass
 
 
+def setup_fonts() -> None:
+    """Setup application fonts."""
+    with dpg.font_registry():
+        # Try to locate a standard Windows font
+        font_path = Path("C:/Windows/Fonts/segoeui.ttf")
+        if font_path.exists():
+            # Use a larger font size for better readability
+            default_font = dpg.add_font(str(font_path), 18)
+            dpg.bind_font(default_font)
+        else:
+            print("Segoe UI font not found, using default.")
+
+
 def _add_help_button(tooltip_key: str) -> None:
     """Add a small '?' help button with tooltip."""
     tooltip_text = TOOLTIPS.get(tooltip_key, "No help available.")
+    
+    # Removed spacer to rely on natural alignment or table alignment
     button = dpg.add_button(label="?", width=20, height=20, callback=lambda: None)
     
     with dpg.tooltip(button):
         # Wrap text to max width for readability
-        dpg.add_text(tooltip_text, wrap=400)
-
+        dpg.add_text(tooltip_text, wrap=500)
