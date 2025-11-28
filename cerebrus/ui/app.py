@@ -29,6 +29,11 @@ class CerebrusApp:
 
     def build(self) -> None:
         dpg.create_context()
+        
+        # Initialize theme
+        from cerebrus.ui.themes import get_theme_manager
+        get_theme_manager().apply_theme("System")
+        
         components.setup_fonts()
         components.log_message(self.state, "INFO", "Cerebrus App Loaded")
         if self.state.profile_path and str(self.state.profile_path) != "No profile loaded":
@@ -40,6 +45,10 @@ class CerebrusApp:
             components.build_file_actions(self.state)
 
         dpg.set_primary_window("MainWindow", True)
+        
+        # Register keyboard handlers
+        with dpg.handler_registry():
+            dpg.add_key_press_handler(dpg.mvKey_F1, callback=lambda: components._open_user_guide(self.state))
 
     def run(self) -> None:
         self.build()

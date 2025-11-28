@@ -13,16 +13,12 @@ import dearpygui.dearpygui as dpg
 from cerebrus.core.devices import DeviceInfo, collect_device_info
 from cerebrus.tools.adb import AdbClient, AdbError
 from cerebrus.ui.state import UIState
+from cerebrus.ui.themes import get_theme_manager
 from cerebrus._version import __version__
 
-SELECTED_ROW_COLOR = (70, 130, 200, 90)
-LOG_LEVEL_COLORS = {
-    "DEBUG": (170, 170, 170),
-    "INFO": (120, 200, 255),
-    "WARNING": (255, 210, 120),
-    "ERROR": (255, 120, 120),
-    "SUCCESS": (15, 240, 15),
-}
+
+# Log colors are now handled by ThemeManager
+
 
 # Tooltip definitions
 TOOLTIPS = {
@@ -43,15 +39,18 @@ TOOLTIPS = {
 }
 
 
+
+def _handle_theme_change(state: UIState, palette: str = None, mode: str = None) -> None:
+    get_theme_manager().apply_theme(palette, mode)
+    _update_profile_display_colors(state)
+    _render_log_entries(state) # Re-render logs to apply new colors
+
+
 def build_menu_bar(state: UIState) -> None:
     """Render the top menu bar."""
     with dpg.menu_bar():
         with dpg.menu(label="File"):
-            dpg.add_menu_item(label="New Window", shortcut="Ctrl+N")
-            dpg.add_menu_item(label="Exit Window", shortcut="Alt+F4")
-
-        with dpg.menu(label="View"):
-            dpg.add_menu_item(label="Reset Layout")
+            dpg.add_menu_item(label="Exit Window", shortcut="Alt+F4", callback=lambda: sys.exit(0))
 
         with dpg.menu(label="Tools"):
             dpg.add_menu_item(label="Echo Test Command", callback=lambda: log_message(state, "INFO", "Echo Test Command Executed"))
@@ -63,34 +62,13 @@ def build_menu_bar(state: UIState) -> None:
 
         with dpg.menu(label="Settings"):
             with dpg.menu(label="Load Theme"):
-                dpg.add_menu_item(label="System Color")
-                dpg.add_menu_item(label="Dark")
-                dpg.add_menu_item(label="Light")
-                dpg.add_menu_item(label="Create Custom")
-                dpg.add_separator()
-                dpg.add_menu_item(
-                    label=(
-                        "Auto populate later when theme system is added from themes saved in a "
-                        "fixed directory"
-                    )
-                )
+                dpg.add_menu_item(label="Standard", callback=lambda: _handle_theme_change(state, "Standard", "Dark"))
+                dpg.add_menu_item(label="Deuteranopia", callback=lambda: _handle_theme_change(state, "Deuteranopia", "Dark"))
+                dpg.add_menu_item(label="Tritanopia", callback=lambda: _handle_theme_change(state, "Tritanopia", "Dark"))
 
-            with dpg.menu(label="Log Colors"):
-                dpg.add_menu_item(label="Edit")
-                dpg.add_menu_item(label="Import")
-                dpg.add_menu_item(label="Export")
-                dpg.add_separator()
-                dpg.add_menu_item(label="Reset to Defaults")
-
-            with dpg.menu(label="Key Bindings"):
-                dpg.add_menu_item(label="Edit")
-                dpg.add_menu_item(label="Import")
-                dpg.add_menu_item(label="Export")
-                dpg.add_separator()
-                dpg.add_menu_item(label="Reset to Defaults")
 
         with dpg.menu(label="Help"):
-            dpg.add_menu_item(label="Help", callback=lambda: _open_user_guide(state))
+            dpg.add_menu_item(label="Help", shortcut="F1", callback=lambda: _open_user_guide(state))
             dpg.add_menu_item(label="Provide Feedback", callback=lambda: _provide_feedback(state))
             dpg.add_menu_item(label="About", callback=lambda: _show_about_dialog(state))
 
@@ -192,7 +170,8 @@ def build_profile_summary(state: UIState) -> None:
     with dpg.group(horizontal=True, horizontal_spacing=12):
         dpg.add_text("Profile Name:")
         # Use warning color for default profile, green for loaded profiles
-        profile_color = (255, 210, 120) if not state.profile_manager.current_profile_path else (150, 255, 150)
+        colors = get_theme_manager().get_profile_status_colors()
+        profile_color = colors["DEFAULT"] if not state.profile_manager.current_profile_path else colors["LOADED"]
         dpg.add_text(tag="profile_nickname_input", default_value=state.profile_nickname, color=profile_color)
         dpg.add_text("Package Name:")
         dpg.add_text(
@@ -346,7 +325,7 @@ def build_file_actions(state: UIState) -> None:
 
     dpg.add_separator()
     with dpg.child_window(border=True, autosize_x=True, autosize_y=False, height=200):
-        dpg.add_text("Logging", color=(120, 180, 255))
+        dpg.add_text("Cerebrus App Live log", color=(120, 180, 255))
         with dpg.group(horizontal=True):
             dpg.add_input_text(
                 tag="log_filter_input",
@@ -356,6 +335,7 @@ def build_file_actions(state: UIState) -> None:
                 user_data=state,
             )
             dpg.add_button(label="Clear", callback=lambda: _clear_logs(state))
+            dpg.add_button(label="Export", callback=lambda: _handle_export_logs(state))
         with dpg.child_window(border=True, autosize_x=True, height=130, tag="log_container"):
             _render_log_entries(state)
 
@@ -759,8 +739,10 @@ def _render_log_entries(state: UIState) -> None:
         )
         return
 
+    log_colors = get_theme_manager().get_log_colors()
+    
     for timestamp, level, message in filtered_logs:
-        color = LOG_LEVEL_COLORS.get(level.upper(), (220, 220, 220))
+        color = log_colors.get(level.upper(), (220, 220, 220))
         full_msg = f"[{timestamp}] [{level}] {message}"
         
         item = dpg.add_input_text(
@@ -803,6 +785,32 @@ def log_message(state: UIState, level: str, message: str) -> None:
 def _clear_logs(state: UIState) -> None:
     state.logs.clear()
     _render_log_entries(state)
+
+
+def _handle_export_logs(state: UIState) -> None:
+    """Export current logs to a text file."""
+    try:
+        root = Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        
+        file_path = filedialog.asksaveasfilename(
+            title="Export Logs",
+            defaultextension=".log",
+            filetypes=[("Log Files", "*.log"), ("Text Files", "*.txt"), ("All Files", "*.*")]
+        )
+        
+        root.destroy()
+        
+        if file_path:
+            with open(file_path, "w", encoding="utf-8") as f:
+                for timestamp, level, message in state.logs:
+                    f.write(f"[{timestamp}] [{level}] {message}\n")
+            
+            log_message(state, "SUCCESS", f"Logs exported to {file_path}")
+            
+    except Exception as e:
+        log_message(state, "ERROR", f"Failed to export logs: {e}")
 
 
 def _refresh_device_table(state: UIState) -> None:
@@ -865,9 +873,9 @@ def _render_device_row(row_index: int, device: DeviceInfo, state: UIState) -> No
             # Color code the Package Found column (last column)
             if column_index == len(values) - 1:  # Package Found column
                 if device.package_found:
-                    text_color = LOG_LEVEL_COLORS["SUCCESS"]  # Green
+                    text_color = get_theme_manager().get_log_colors().get("SUCCESS", (0, 255, 0))
                 else:
-                    text_color = LOG_LEVEL_COLORS["ERROR"]  # Red
+                    text_color = get_theme_manager().get_log_colors().get("ERROR", (255, 0, 0))
                 # Use text with color instead of selectable for this column
                 dpg.add_text(value, color=text_color, tag=cell_tag)
             else:
@@ -1454,7 +1462,8 @@ def _handle_open_profile_selected(sender: int, app_data: dict, user_data: UIStat
 
 def _update_profile_display_colors(state: UIState) -> None:
     """Update the display colors for profile labels based on whether it's default or loaded."""
-    profile_color = (255, 210, 120) if not state.profile_manager.current_profile_path else (150, 255, 150)
+    colors = get_theme_manager().get_profile_status_colors()
+    profile_color = colors["DEFAULT"] if not state.profile_manager.current_profile_path else colors["LOADED"]
     
     if dpg.does_item_exist("profile_nickname_input"):
         dpg.configure_item("profile_nickname_input", color=profile_color)
