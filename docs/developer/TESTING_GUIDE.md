@@ -43,6 +43,15 @@ This document outlines testing expectations and organization.
 pytest
 ```
 
+Before running the full suite, keep local changes aligned with CI by executing:
+
+```bash
+black --check .
+isort --check-only .
+mypy cerebrus
+python -m cerebrus.core.preflight
+```
+
 Optional flags:
 
 - `-q` for quiet.
@@ -53,5 +62,7 @@ Optional flags:
 
 - Continuous integration should:
   - Install dependencies.
+  - Run linting (`black --check`, `isort --check-only`, `mypy`).
+  - Run preflight checks to validate cache creation and configuration loading.
   - Run unit tests by default.
   - Optionally run integration tests on a schedule or when requested.

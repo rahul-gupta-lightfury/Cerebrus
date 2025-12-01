@@ -17,17 +17,12 @@ From the Reports or Analysis panel, you can:
 
 1. Choose a **project** and **profile**.
 2. Select runs to analyze (by date, build, device).
-3. Choose report type:
-   - `flythrough`
-   - `playthrough`
-   - `playthroughmemory`
-   - Custom project-defined mapping.
-4. Generate reports:
+3. Generate reports:
    - Cerebrus invokes:
      - CSVCollate (if needed) to collate multiple CSVs.
      - PerfReportTool for HTML / CSV / JSON summary generation.
      - CsvToSVG for visual graphs.
-5. Inspect:
+4. Inspect:
    - Open generated HTML in a browser.
    - Open CSVs in spreadsheet tools or internal viewers.
    - View SVG graphs directly or from the UI.
@@ -60,8 +55,6 @@ Configurable per project but typically:
         summary_json/
         svg/
 ```
-
-See `docs/config/CACHE_MANAGEMENT.md` for more on caching and cleanup.
 
 ## Troubleshooting
 

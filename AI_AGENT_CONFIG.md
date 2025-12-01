@@ -43,10 +43,6 @@ Codex should treat the following as authoritative references:
 - Installer docs:
   - `docs/installer/OVERVIEW.md`
   - `docs/installer/WINDOWS_INSTALLER_SPEC.md`
-- Config docs:
-  - `docs/config/TOOLS_PATHS.md`
-  - `docs/config/PROFILE_DEFINITIONS.md`
-  - `docs/config/CACHE_MANAGEMENT.md`
 
 ## Task Scoping Rules
 

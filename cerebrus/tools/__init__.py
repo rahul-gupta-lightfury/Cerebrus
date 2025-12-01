@@ -1,5 +1,4 @@
-"""Wrappers for external tooling used by Cerebrus."""
+"""External tooling wrappers for Cerebrus."""
+from cerebrus.tools.adb import AdbClient, AdbError
 
-from .uaft import UAFTTool
-
-__all__ = ["UAFTTool"]
+__all__ = ["AdbClient", "AdbError"]

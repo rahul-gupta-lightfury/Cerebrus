@@ -1,5 +1,4 @@
-"""Dear ImGui UI scaffolding."""
+"""UI package for Cerebrus."""
+from cerebrus.ui.app import CerebrusApp
 
-from .main_window import CerebrusUI
-
-__all__ = ["CerebrusUI"]
+__all__ = ["CerebrusApp"]

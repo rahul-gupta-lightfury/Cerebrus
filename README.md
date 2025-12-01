@@ -4,10 +4,12 @@ Python-based Windows-only toolkit with a Dear ImGui UI for managing Unreal Engin
 
 Cerebrus orchestrates:
 - Device discovery and Android workload management.
+- Automatic ADB environment setup and verification.
 - Retrieval of logcat logs, CSV profiling data, and Insights captures.
+- Simplified "Output Path" workspace management with automatic device-specific folder organization.
 - Per-project configuration and caching.
 - CSV- and PerfReport-based reporting flows using Unreal Engine's CsvTools and PerfReportTool.
-- Theme configuration and a stable one-click installer.
+- Theme configuration (Standard, High Contrast, Color Blind modes) and a stable one-click installer.
 
 > Note: This repository assumes you already have Unreal Engine binaries available for:
 > - UAFT (Unreal Android File Tool)
@@ -63,42 +65,50 @@ Adjust this layout as the project evolves, but keep documentation in sync.
 
    Keep `requirements.txt` minimal and reproducible. Prefer exact versions for tooling that affects profiling reports.
 
-4. **Configure Unreal-Tool Paths**
+4. **Run the DearPyGui UI**
 
-   Update `config/cerebrus.yaml` so that it points to your Unreal Engine
-   installation binaries and declares at least one profiling profile:
-
-   ```yaml
-   version: 1
-   tool_paths:
-     uaft: E:/DonE/git/UE57/Engine/Binaries/Win64/UAFT.exe
-     csvtools_root: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools
-     perfreporttool: E:/DonE/git/UE57/Engine/Binaries/DotNET/CsvTools/PerfreportTool.exe
-   cache:
-     directory: .cerebrus-cache
-   profiles:
-     - name: default
-       report_type: summary
-       csv_filters:
-         - stat=Unit
-   ```
-
-   The configuration loader validates this file on startup and injects defaults
-   if the file is missing. Cerebrus wrappers consume the resolved paths rather
-   than hardcoding anything.
-
-5. **Run the toolkit scaffold**
-
-   The repository now includes a minimal bootstrap that wires the configuration
-   loader, cache manager, device manager, and UI panels together. Run it with:
+   The repository now includes a runnable DearPyGui interface that mirrors the
+   sketch attached to the task. Launch it with:
 
    ```bash
    python -m cerebrus
    ```
 
-   The scaffold logs panel activity and validates that configuration and cache
-   directories are wired correctly. It does **not** yet render a full Dear ImGui
-   experience, but it establishes the application lifecycle for follow-up work.
+   The window opens with a menu bar, profile summary fields, device listing
+   controls, and placeholders for log copying, CSV exports, and report
+   generation. Use the **List Devices** button to populate sample rows.
+
+5. **(Optional) Configure tool paths**
+
+   The application ships with built-in defaults so you can launch the UI
+   without creating a configuration file. If you want to point Cerebrus at
+   specific Unreal Engine tooling later, create `config/cerebrus.yaml` and
+   populate the `tool_paths` block; otherwise you can skip this entirely. The
+   stubs will continue to use mocked device data until real paths are supplied.
+
+6. **Run preflight checks**
+
+   Use the preflight helper to verify configuration wiring and cache creation
+   without launching the UI:
+
+   ```bash
+   python -m cerebrus.core.preflight --config config/cerebrus.yaml
+   ```
+
+   If `config/cerebrus.yaml` is missing, the defaults will be used and a local
+   `.cerebrus-cache` folder will be created or refreshed.
+
+## Continuous Integration
+
+GitHub Actions enforces three separate steps on pushes and pull requests:
+
+1. **Lint** — `black --check`, `isort --check-only`, and `mypy` over the
+   `cerebrus` package.
+2. **Preflight** — `python -m cerebrus.core.preflight --config config/cerebrus.yaml`
+   to ensure configuration files parse and cache directories can be created.
+3. **Unit tests** — `pytest`.
+
+Keep local changes aligned with these commands to avoid CI regressions.
 
 ## Working With Codex
 

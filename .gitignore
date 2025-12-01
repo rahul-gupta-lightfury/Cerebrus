@@ -30,7 +30,7 @@ MANIFEST
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
-*.spec
+# *.spec  # Commented out - we need to commit our PyInstaller spec file
 
 # Installer logs
 pip-log.txt
@@ -235,7 +235,7 @@ python_env/
 */Scripts/
 
 # Pyinstaller / standalone binaries
-*.spec
+# *.spec  # Commented out - we need to commit our PyInstaller spec file
 *.exe
 *.dll
 *.manifest
@@ -280,6 +280,12 @@ config/local.settings.json
 config/projects/*.local.json
 config/profiles/*.local.json
 
+# User profile directory (stores last used profile path)
+.cerebrus/
+
+# Test profiles (optional - remove if you want to commit test profiles)
+**/test_profiles/
+
 ###############################################
 # Profiling data & captures
 ###############################################
@@ -313,6 +319,7 @@ summary_json/
 svg/
 *.svg
 *.html
+!user_guide.html
 
 # PerfReportTool caches
 *.csv.cache
@@ -327,6 +334,10 @@ cache/
 .cerebrus_cache/
 */cache/
 **/cache/
+!cerebrus/cache/
+!cerebrus/cache/**
+!tests/cache/
+!tests/cache/**
 
 ###############################################
 # Installer Artifacts

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cerebrus User Guide</title>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #2c3e50;
+        }
+
+        h1 {
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+
+        code {
+            background-color: #e0e0e0;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: Consolas, monospace;
+        }
+
+        pre {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container">
+        <h1 id="cerebrus-user-guide">Cerebrus User Guide</h1>
+        <p>Cerebrus is a comprehensive GUI toolkit for Unreal Engine Android profiling workflows. It simplifies the
+            process of collecting logs, moving files, and generating performance reports.</p>
+        <h2 id="table-of-contents">Table of Contents</h2>
+        <ol>
+            <li><a href="#getting-started">Getting Started</a></li>
+            <li><a href="#profile-management">Profile Management</a></li>
+            <li><a href="#device-management">Device Management</a></li>
+            <li><a href="#remote-profiling">Remote Profiling</a></li>
+            <li><a href="#file-actions">File Actions</a></li>
+            <li><a href="#report-generation">Report Generation</a></li>
+            <li><a href="#settings">Settings</a></li>
+        </ol>
+        <h2 id="getting-started">Getting Started</h2>
+        <p>Launch Cerebrus to see the main dashboard. The application will automatically check for and install ADB
+            (Android Debug Bridge) if it's missing from your system. The interface is divided into several sections:
+            - <strong>Menu Bar</strong>: Access file operations, views, tools, settings, and help.
+            - <strong>Profile Summary</strong>: Displays the currently loaded profile information.
+            - <strong>Device List</strong>: Shows connected Android devices.
+            - <strong>Data and Perf Report</strong>: Configure paths and perform bulk actions.
+            - <strong>Logging</strong>: View real-time application logs.</p>
+        <h2 id="profile-management">Profile Management</h2>
+        <p>Profiles allow you to save and load configurations for different projects or devices.
+            - <strong>New Profile</strong>: Create a fresh configuration.
+            - <strong>Open Profile</strong>: Load an existing JSON profile.
+            - <strong>Edit Profile</strong>: Modify the current profile settings.
+            - <strong>Auto-Save</strong>: Changes to paths and settings are automatically saved to the current profile.
+        </p>
+        <h2 id="device-management">Device Management</h2>
+        <p>The device list shows all connected Android devices.
+            - <strong>Refresh</strong>: Click "List Devices" to scan for connected devices.
+            - <strong>Selection</strong>: Click on a device row to select it for operations.
+            - <strong>Status</strong>: The table shows the device model, serial number, Android version, and if the
+            target package is installed.</p>
+        <h2 id="remote-profiling">Remote Profiling</h2>
+        <p>Control Unreal Engine profiling directly from Cerebrus.
+            - <strong>Start Profiling</strong>: Starts profiling data on selected device if Package is running actively
+            in foreground.
+            - <strong>Stop Profiling</strong>: Stops profiling data on selected device if Package is running actively in
+            foreground.
+            - <strong>Note</strong>: The application must be running on the selected device for these commands to work.
+        </p>
+        <h2 id="file-actions">File Actions</h2>
+        <p>Manage files between your PC and the connected Android device.</p>
+        <h3 id="configuration">Configuration</h3>
+        <ul>
+            <li><strong>Output File Name</strong>: The base name for generated files.</li>
+            <li><strong>Output Path</strong>: The main workspace folder. Files moved from devices will be saved here,
+                and generated reports will be output here.</li>
+            <li><strong>Automatic Device Organization</strong>: When a device is selected, a subfolder with the device
+                make and model is automatically created in the Output Path to keep your data organized.</li>
+        </ul>
+        <h3 id="bulk-actions-phone-to-pc">Bulk Actions (Phone to PC)</h3>
+        <ul>
+            <li><strong>Move Logs</strong>: Copies logs from <code>Saved/Logs</code> on the device to your PC.</li>
+            <li><strong>Move Profiling Data</strong>: Copies profiling data from <code>Saved/Profiling/CSV</code> on the
+                device to your PC.</li>
+        </ul>
+        <h2 id="report-generation">Report Generation</h2>
+        <p>Process collected data into readable formats.</p>
+        <h3 id="bulk-actions-pc-to-pc">Bulk Actions (PC to PC)</h3>
+        <ul>
+            <li><strong>Generate Perf Report Only</strong>: Runs <code>PerfreportTool.exe</code> on CSV files.</li>
+            <li><strong>Generate Colored Logs Only</strong>: Converts text logs to color-coded HTML files.</li>
+            <li><strong>Generate Perf Report + Colored Logs</strong>: Performs both operations in sequence.</li>
+            <li><strong>View HTML Logs</strong>: Opens the output folder to view generated HTML logs.</li>
+        </ul>
+        <h2 id="settings">Settings</h2>
+        <p>Customize your experience via the Settings menu.
+            - <strong>Load Theme</strong>: Switch between Dark, Light, or System themes.
+            - <strong>Log Colors</strong>: Customize the colors used in the application log window.
+            - <strong>Key Bindings</strong>: View or edit keyboard shortcuts.</p>
+        <h2 id="troubleshooting">Troubleshooting</h2>
+        <ul>
+            <li><strong>No Devices Found</strong>: Ensure USB debugging is enabled and ADB is running.</li>
+            <li><strong>List Devices Not Working</strong>: If the "List Devices" button does not work automatically,
+                open a command prompt and run the command <code>adb devices</code> manually once to initialize the
+                daemon.</li>
+            <li><strong>Tool Not Found</strong>: Verify that <code>PerfreportTool.exe</code> path is correctly
+                configured in your environment or settings.</li>
+        </ul>
+    </div>
+</body>
+
+</html>

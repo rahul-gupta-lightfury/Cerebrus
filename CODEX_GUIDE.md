@@ -15,30 +15,6 @@ Codex is the code-generation and refactoring engine used on this repository. Thi
    - Codex must provide unified diffs and rationale where requested.
    - All changes go through regular code review.
 
-## Typical Codex Tasks
-
-Examples of appropriate Codex tasks:
-
-- Design:
-  - “Propose a module structure for `cerebrus/tools/csv` that wraps CSVCollate, CsvConvert, CSVFilter, CSVSplit, CsvToSVG, and csvinfo.”
-- Implementation:
-  - “Implement a `CsvCollateRunner` class that builds the CSVCollate command line from a list of CSV paths and an output path, using an injected binary path.”
-- Refactoring:
-  - “Refactor `core/device_manager.py` to separate adb probing from device model construction; preserve behavior.”
-
-Avoid asking Codex to:
-- “Rewrite the entire project.”
-- “Make everything faster / better / cleaner” without constraints.
-
-## Required Constraints for Codex
-
-When you ask Codex to modify code, include constraints such as:
-
-- Respect the repository layout and module boundaries defined in `docs/ARCHITECTURE_OVERVIEW.md`.
-- Keep all external tool invocations isolated under `cerebrus/tools/`.
-- Do not hardcode local paths; use config objects or configuration files.
-- Prefer pure functions and clear data models where possible.
-- Update or create documentation when behavior changes.
 
 ## Preferred Output Format
 

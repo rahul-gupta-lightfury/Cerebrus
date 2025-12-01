@@ -1,11 +1,4 @@
-"""Core orchestration utilities for Cerebrus."""
+"""Core orchestration helpers."""
+from cerebrus.core.preflight import run_preflight
 
-from .app import CerebrusApp
-from .device_manager import DeviceManager
-from .profiles import ProfileRegistry
-
-__all__ = [
-    "CerebrusApp",
-    "DeviceManager",
-    "ProfileRegistry",
-]
+__all__ = ["run_preflight"]

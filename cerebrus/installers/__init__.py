@@ -1,5 +1,6 @@
-"""Installer helpers for Cerebrus."""
+"""Installer helpers for packaging Cerebrus."""
+from __future__ import annotations
 
-from .windows_installer import WindowsInstallerSpec
+from .builder import build_windows_installer
 
-__all__ = ["WindowsInstallerSpec"]
+__all__ = ["build_windows_installer"]

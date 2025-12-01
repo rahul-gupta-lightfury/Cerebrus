@@ -1,4 +1,4 @@
-imgui[bundled]
+dearpygui
 psutil
 pywin32
 pyyaml
