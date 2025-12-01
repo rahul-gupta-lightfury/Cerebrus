@@ -64,6 +64,31 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
+
+        .step-number {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            margin-right: 8px;
+            font-weight: bold;
+        }
+
+        .workflow {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .workflow h4 {
+            margin-top: 0;
+            color: #3498db;
+        }
     </style>
 
 </head>
@@ -76,6 +101,7 @@
         <h2 id="table-of-contents">Table of Contents</h2>
         <ol>
             <li><a href="#getting-started">Getting Started</a></li>
+            <li><a href="#usage-steps">Usage / Steps to Use</a></li>
             <li><a href="#profile-management">Profile Management</a></li>
             <li><a href="#device-management">Device Management</a></li>
             <li><a href="#remote-profiling">Remote Profiling</a></li>
@@ -91,6 +117,103 @@
             - <strong>Device List</strong>: Shows connected Android devices.
             - <strong>Data and Perf Report</strong>: Configure paths and perform bulk actions.
             - <strong>Logging</strong>: View real-time application logs.</p>
+
+        <h2 id="usage-steps">Usage / Steps to Use</h2>
+        <p>This section provides step-by-step instructions for common workflows in Cerebrus.</p>
+
+        <div class="workflow">
+            <h4>Workflow 1: First-Time Setup</h4>
+            <ol>
+                <li><strong>Launch Cerebrus</strong> - The application will automatically check for ADB. If not found,
+                    it will be installed automatically.</li>
+                <li><strong>Create or Load a Profile</strong> - Go to <code>File → New Profile</code> or use the default
+                    "Titan" profile.</li>
+                <li><strong>Configure Package Name</strong> - In the Edit Profile dialog, enter your Unreal Engine app's
+                    package name (e.g., <code>com.lightfury.titan</code>).</li>
+                <li><strong>Set Output Path</strong> - Choose a workspace folder where all data and reports will be
+                    saved (defaults to <code>C:\</code>).</li>
+                <li><strong>Save Profile</strong> - Your settings will be auto-saved to the profile JSON file.</li>
+            </ol>
+        </div>
+
+        <div class="workflow">
+            <h4>Workflow 2: Collecting Data from a Device</h4>
+            <ol>
+                <li><strong>Connect Your Android Device</strong> - Enable USB debugging and connect via USB cable.</li>
+                <li><strong>List Devices</strong> - Click the "List Devices" button to scan for connected devices.
+                    <br><em>Note: If this fails on first run, open Command Prompt and run <code>adb devices</code>
+                        manually once to initialize the ADB daemon.</em>
+                </li>
+                <li><strong>Select Device</strong> - Click on the device row in the table to select it. The device
+                    make/model will be automatically appended to your output path.</li>
+                <li><strong>Verify Package Installation</strong> - Check that the "Package Found" column shows "Yes" for
+                    your device.</li>
+                <li><strong>Run Your App</strong> - Launch your Unreal Engine application on the device.</li>
+                <li><strong>Start Profiling</strong> (Optional) - Click "Start Profiling" to begin collecting
+                    performance data.</li>
+                <li><strong>Perform Testing</strong> - Use your app and perform the actions you want to profile.</li>
+                <li><strong>Stop Profiling</strong> (Optional) - Click "Stop Profiling" when done.</li>
+                <li><strong>Move Data to PC</strong>:
+                    <ul>
+                        <li>Check "Move Logs" to copy log files from the device</li>
+                        <li>Check "Move Profiling Data" to copy CSV profiling data</li>
+                        <li>Files will be organized in <code>Output Path/DeviceMakeModel/Logs</code> and
+                            <code>Output Path/DeviceMakeModel/CSV</code></li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="workflow">
+            <h4>Workflow 3: Generating Performance Reports</h4>
+            <ol>
+                <li><strong>Ensure Data is Available</strong> - Make sure you have CSV files and/or log files in your
+                    output path (either from moving data or from previous sessions).</li>
+                <li><strong>Set Output File Name</strong> - Enter a descriptive name for your report in the "Output File
+                    Name" field.</li>
+                <li><strong>Choose Report Type</strong>:
+                    <ul>
+                        <li><strong>Generate Perf Report Only</strong> - Processes CSV files using PerfreportTool.exe to
+                            create performance reports</li>
+                        <li><strong>Generate Colored Logs Only</strong> - Converts text logs to color-coded HTML files
+                            for easier reading</li>
+                        <li><strong>Generate Perf Report + Colored Logs</strong> - Performs both operations together
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>Click the Generate Button</strong> - The selected operation will run and output files will
+                    be created in the device-specific subfolder.</li>
+                <li><strong>View Results</strong> - Click "View HTML Logs" to open the output folder and view generated
+                    reports.</li>
+            </ol>
+        </div>
+
+        <div class="workflow">
+            <h4>Workflow 4: Working with Multiple Devices or Projects</h4>
+            <ol>
+                <li><strong>Create Separate Profiles</strong> - Go to <code>File → New Profile</code> for each
+                    project/app.</li>
+                <li><strong>Configure Each Profile</strong> - Set unique package names and output paths for each.</li>
+                <li><strong>Save Profiles</strong> - Use descriptive filenames (e.g., <code>titan_profile.json</code>,
+                    <code>game2_profile.json</code>).</li>
+                <li><strong>Switch Between Profiles</strong> - Use <code>File → Open Profile</code> to load different
+                    configurations.</li>
+                <li><strong>Device Auto-Organization</strong> - When you select different devices, Cerebrus
+                    automatically creates device-specific subfolders to keep data organized.</li>
+            </ol>
+        </div>
+
+        <div class="workflow">
+            <h4>Workflow 5: Analyzing Existing Data</h4>
+            <ol>
+                <li><strong>Set Output Path</strong> - Point to a folder that already contains <code>Logs</code> and/or
+                    <code>CSV</code> subdirectories.</li>
+                <li><strong>Generate Reports</strong> - You can generate performance reports and colored logs even
+                    without moving data from a device.</li>
+                <li><strong>No Device Required</strong> - This workflow works entirely offline with existing data.</li>
+            </ol>
+        </div>
+
         <h2 id="profile-management">Profile Management</h2>
         <p>Profiles allow you to save and load configurations for different projects or devices.
             - <strong>New Profile</strong>: Create a fresh configuration.
