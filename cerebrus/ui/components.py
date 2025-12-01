@@ -545,25 +545,15 @@ def _handle_generate_perf_report(state: UIState) -> None:
         log_message(state, "ERROR", f"PerfreportTool not found at: {tool_path}")
         return
 
-    # Input CSV directory: {Output Path}\CSV
-    csv_dir = state.output_path / "CSV"
+    # Input CSV directory: Use base path / CSV (where files are actually moved)
+    base_path = state.base_output_path if state.base_output_path else state.output_path
+    csv_dir = base_path / "CSV"
     if not csv_dir.exists():
         log_message(state, "ERROR", f"CSV directory not found: {csv_dir}")
         return
 
-    # Output directory: {Output Path}/{DeviceMakeModel}/ if device selected, else {Output Path}
+    # Output directory: state.output_path (which includes device folder if set)
     output_dir = state.output_path
-    if state.selected_device_serial:
-        # Find the selected device
-        selected_device = None
-        for device in state.devices:
-            if device.serial == state.selected_device_serial:
-                selected_device = device
-                break
-        
-        if selected_device:
-            device_folder = f"{selected_device.make}_{selected_device.model}"
-            output_dir = state.output_path / device_folder
     
     if not output_dir.exists():
         try:
@@ -634,25 +624,15 @@ def _handle_generate_perf_report(state: UIState) -> None:
 
 def _handle_generate_colored_logs(state: UIState) -> None:
     """Convert text logs to colored HTML logs."""
-    # Input Logs directory: {Output Path}\Logs
-    logs_dir = state.output_path / "Logs"
+    # Input Logs directory: Use base path / Logs (where files are actually moved)
+    base_path = state.base_output_path if state.base_output_path else state.output_path
+    logs_dir = base_path / "Logs"
     if not logs_dir.exists():
         log_message(state, "ERROR", f"Logs directory not found: {logs_dir}")
         return
 
-    # Output directory: {Output Path}/{DeviceMakeModel}/ if device selected, else {Output Path}
+    # Output directory: state.output_path (which includes device folder if set)
     output_dir = state.output_path
-    if state.selected_device_serial:
-        # Find the selected device
-        selected_device = None
-        for device in state.devices:
-            if device.serial == state.selected_device_serial:
-                selected_device = device
-                break
-        
-        if selected_device:
-            device_folder = f"{selected_device.make}_{selected_device.model}"
-            output_dir = state.output_path / device_folder
     
     if not output_dir.exists():
         try:
@@ -694,14 +674,14 @@ def _handle_generate_colored_logs(state: UIState) -> None:
 
 def _handle_view_html_logs(state: UIState) -> None:
     """Open HTML log files in the default web browser."""
-    # Output directory: {Output Folder Path}
+    # Output directory: state.output_path (device-specific folder)
     output_dir = state.output_path
     if not output_dir.exists():
         log_message(state, "ERROR", f"Output directory not found: {output_dir}")
         return
 
-    # Find all HTML files in the output directory
-    html_files = list(output_dir.glob("*.html"))
+    # Find all HTML files recursively in the output directory and subdirectories
+    html_files = list(output_dir.glob("**/*.html"))
     
     if not html_files:
         log_message(state, "WARNING", f"No HTML files found in {output_dir}")
@@ -805,8 +785,10 @@ def _move_files_from_device(state: UIState, source_subpath: str, dest_subpath: s
     # User confirmed structure: UnrealGame/{Name}/{Name}/Saved/...
     source_path = f"/sdcard/Android/data/{state.package_name}/files/UnrealGame/{project_name}/{project_name}/Saved/{source_subpath}/"
     
-    # Dest: {state.output_path}/{dest_subpath}/
-    dest_path = state.output_path / dest_subpath
+    # Dest: Use base_output_path (not device-specific) / {dest_subpath}/
+    # This ensures files go to OutputPath/CSV and OutputPath/Logs, not OutputPath/Device/CSV
+    base_path = state.base_output_path if state.base_output_path else state.output_path
+    dest_path = base_path / dest_subpath
     
     if not dest_path.exists():
         dest_path.mkdir(parents=True, exist_ok=True)
@@ -1037,8 +1019,19 @@ def _handle_device_select(sender: int, app_data: int, user_data: tuple[UIState, 
         return
     _select_device_row(row_index, state)
 
-    # Update output file name to match device make and model
+    # Update output path to show device-specific folder
     if selected_device:
+        # Store base path if not already stored
+        if state.base_output_path is None:
+            state.base_output_path = state.output_path
+        
+        device_folder = f"{selected_device.make}_{selected_device.model}"
+        state.output_path = state.base_output_path / device_folder
+        
+        if dpg.does_item_exist("output_path_label"):
+            dpg.set_value("output_path_label", str(state.output_path))
+        
+        # Update output file name to match device make and model
         new_file_name = f"{selected_device.make}_{selected_device.model}"
         state.output_file_name = new_file_name
         if dpg.does_item_exist("output_file_name"):
@@ -1102,6 +1095,7 @@ def _browse_folder_native(state: UIState, path_type: str) -> None:
                 log_message(state, "SUCCESS", f"Input path set to: {selected_path}")
                 _auto_save_profile(state)
             else:  # output
+                state.base_output_path = selected_path
                 state.output_path = selected_path
                 
                 if dpg.does_item_exist("output_path_label"):
@@ -1331,7 +1325,11 @@ def _save_current_profile(state: UIState) -> None:
         
         profile.output_file_name = state.output_file_name
         profile.input_path = str(state.input_path)
-        profile.output_path = str(state.output_path)
+        # Save base_output_path if available to avoid saving device-specific path
+        if state.base_output_path:
+            profile.output_path = str(state.base_output_path)
+        else:
+            profile.output_path = str(state.output_path)
         profile.use_prefix_only = state.use_prefix_only
         
         state.profile_manager.save_current_profile()
@@ -1352,7 +1350,11 @@ def _auto_save_profile(state: UIState) -> None:
             
         profile.output_file_name = state.output_file_name
         profile.input_path = str(state.input_path)
-        profile.output_path = str(state.output_path)
+        # Save base_output_path if available to avoid saving device-specific path
+        if state.base_output_path:
+            profile.output_path = str(state.base_output_path)
+        else:
+            profile.output_path = str(state.output_path)
         profile.use_prefix_only = state.use_prefix_only
         
         # Save bulk action states
@@ -1495,6 +1497,7 @@ def _load_profile_from_path(state: UIState, path: Path) -> None:
         state.output_file_name = profile.output_file_name
         state.input_path = Path(profile.input_path) if profile.input_path else Path("")
         state.output_path = Path(profile.output_path) if profile.output_path else Path("")
+        state.base_output_path = state.output_path  # Set base path to loaded path
         state.use_prefix_only = profile.use_prefix_only
         
         # Load bulk action states (with defaults if missing in old profiles)
