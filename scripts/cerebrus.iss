@@ -6,7 +6,7 @@
 #if MyAppVersion == ""
   #define MyAppVersion "0.0.0"
 #endif
-#define MyAppPublisher "Cerebrus Team"
+#define MyAppPublisher "LeagueX Gaming"
 #define MyAppURL "https://github.com/yourusername/cerebrus"
 #define MyAppExeName "Cerebrus.exe"
 #define MyAppIcon "..\cerebrus\resources\icon256x256.ico"

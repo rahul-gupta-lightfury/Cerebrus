@@ -361,8 +361,67 @@ def _populate_devices(state: UIState) -> None:
     package_value = dpg.get_value("package_input") if dpg.does_item_exist("package_input") else ""
     state.package_name = package_value or ""
     state.devices = collect_device_info(state.package_name)
-    state.devices = collect_device_info(state.package_name)
+    
+    if not state.devices:
+        _show_device_troubleshooting_dialog(state)
+        
     _refresh_device_table(state)
+
+
+def _show_device_troubleshooting_dialog(state: UIState) -> None:
+    """Show a dialog with ADB troubleshooting steps."""
+    if dpg.does_item_exist("adb_troubleshoot_dialog"):
+        dpg.delete_item("adb_troubleshoot_dialog")
+        
+    # Center the dialog
+    viewport_width = dpg.get_viewport_width()
+    viewport_height = dpg.get_viewport_height()
+    width = 500
+    height = 320
+    pos_x = (viewport_width - width) // 2
+    pos_y = (viewport_height - height) // 2
+
+    with dpg.window(
+        tag="adb_troubleshoot_dialog",
+        label="Device Connection Issue",
+        modal=True,
+        width=width,
+        height=height,
+        pos=(pos_x, pos_y),
+        no_resize=True
+    ):
+        dpg.add_text("No active devices found.", color=(255, 100, 100))
+        dpg.add_text("If your device is connected but not showing up, please try the following:", wrap=460)
+        dpg.add_spacer(height=10)
+        
+        with dpg.group(horizontal=True):
+            dpg.add_text("1.")
+            dpg.add_text("Open Command Prompt (cmd.exe) or PowerShell.")
+        
+        with dpg.group(horizontal=True):
+            dpg.add_text("2.")
+            dpg.add_text("Run the command:")
+            dpg.add_text("adb devices", color=(120, 255, 120))
+            
+        with dpg.group(horizontal=True):
+            dpg.add_text("3.")
+            dpg.add_text("Check your phone for a USB Debugging permission popup.")
+        
+        with dpg.group(horizontal=True):
+            dpg.add_text("  ")
+            dpg.add_text("Select 'Always allow' and click Allow.", color=(255, 255, 150))
+            
+        with dpg.group(horizontal=True):
+            dpg.add_text("4.")
+            dpg.add_text("Restart Cerebrus or click 'List Devices' again.")
+            
+        dpg.add_spacer(height=20)
+        dpg.add_separator()
+        dpg.add_spacer(height=10)
+        
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=380)
+            dpg.add_button(label="OK", width=80, callback=lambda: dpg.delete_item("adb_troubleshoot_dialog"))
 
 
 def _handle_start_profiling(state: UIState) -> None:
