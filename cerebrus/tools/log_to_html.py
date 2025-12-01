@@ -1,20 +1,20 @@
 """Convert text log files to colored HTML with search filtering."""
+
 import argparse
 import re
-from pathlib import Path
 from html import escape
-
+from pathlib import Path
 
 # Define log level color patterns
 # Order matters! First match wins.
 LOG_PATTERNS = {
-    'ERROR': (r'\b(?:Error|ERROR)\b', '#FF0000'),  # Red
-    'WARNING': (r'\b(?:Warning|WARNING)\b', '#FFA500'),  # Orange
-    'CMD': (r'\bCmd:', '#00FF00'),  # Green
-    'SUCCESS': (r'\b(?:Success|SUCCESS|completed successfully)\b', '#00FF00'),  # Green
-    'CONFIG': (r'(?:LogConfig|cvar|\.ini)', '#6495ED'),  # Cornflower Blue
-    'LOGTEMP': (r'\bLogTemp\b', '#FF00FF'),  # Magenta
-    'INFO': (r'\b(?:Info|INFO)\b', '#000000'),  # Black (default)
+    "ERROR": (r"\b(?:Error|ERROR)\b", "#FF0000"),  # Red
+    "WARNING": (r"\b(?:Warning|WARNING)\b", "#FFA500"),  # Orange
+    "CMD": (r"\bCmd:", "#00FF00"),  # Green
+    "SUCCESS": (r"\b(?:Success|SUCCESS|completed successfully)\b", "#00FF00"),  # Green
+    "CONFIG": (r"(?:LogConfig|cvar|\.ini)", "#6495ED"),  # Cornflower Blue
+    "LOGTEMP": (r"\bLogTemp\b", "#FF00FF"),  # Magenta
+    "INFO": (r"\b(?:Info|INFO)\b", "#000000"),  # Black (default)
 }
 
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -384,47 +384,47 @@ def detect_log_level(line: str) -> str:
     for level, (pattern, _) in LOG_PATTERNS.items():
         if re.search(pattern, line):
             return level.lower()
-    return 'info'
+    return "info"
 
 
 def convert_log_to_html(input_file: Path, output_file: Path) -> None:
     """Convert a text log file to HTML with colored formatting."""
     try:
         # Read the log file
-        with open(input_file, 'r', encoding='utf-8', errors='replace') as f:
+        with open(input_file, "r", encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
-        
+
         # Generate HTML for each log line
         log_html_lines = []
         for i, line in enumerate(lines, 1):
-            line = line.rstrip('\n\r')
+            line = line.rstrip("\n\r")
             if not line.strip():
                 continue
-            
+
             # Escape HTML characters
             escaped_line = escape(line)
-            
+
             # Detect log level
             log_level = detect_log_level(line)
-            
+
             # Create HTML log line
             log_html = f'            <div class="log-line log-{log_level}">{escaped_line}</div>'
             log_html_lines.append(log_html)
-        
+
         # Generate the complete HTML
         html_content = HTML_TEMPLATE.format(
             title=f"Log Viewer - {input_file.name}",
             total_lines=len(log_html_lines),
-            log_lines='\n'.join(log_html_lines)
+            log_lines="\n".join(log_html_lines),
         )
-        
+
         # Write the HTML file
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(html_content)
-        
+
         print(f"✓ Successfully converted {input_file.name} to {output_file.name}")
         print(f"  - Total lines: {len(log_html_lines)}")
-        
+
     except Exception as e:
         print(f"✗ Error converting {input_file.name}: {e}")
         raise
@@ -433,38 +433,32 @@ def convert_log_to_html(input_file: Path, output_file: Path) -> None:
 def main():
     """Main entry point for the log converter."""
     parser = argparse.ArgumentParser(
-        description='Convert text log files to colored HTML with search filtering'
+        description="Convert text log files to colored HTML with search filtering"
     )
     parser.add_argument(
-        '-i', '--input',
-        type=str,
-        required=True,
-        help='Input log file path'
+        "-i", "--input", type=str, required=True, help="Input log file path"
     )
     parser.add_argument(
-        '-o', '--output',
-        type=str,
-        required=True,
-        help='Output HTML file path'
+        "-o", "--output", type=str, required=True, help="Output HTML file path"
     )
-    
+
     args = parser.parse_args()
-    
+
     input_file = Path(args.input)
     output_file = Path(args.output)
-    
+
     if not input_file.exists():
         print(f"✗ Error: Input file not found: {input_file}")
         return 1
-    
+
     # Ensure output directory exists
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Convert the log file
     convert_log_to_html(input_file, output_file)
-    
+
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit(main())

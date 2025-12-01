@@ -4,8 +4,13 @@
 from pathlib import Path
 import sys
 
-# Get the root directory (parent of scripts/)
-root_dir = Path(SPECPATH).parent
+# Get the root directory
+spec_path = Path(SPECPATH).resolve()
+root_dir = spec_path.parent
+if not (root_dir / "cerebrus").exists():
+    root_dir = root_dir.parent
+
+print(f"DEBUG: Resolved root_dir={root_dir}")
 cerebrus_dir = root_dir / "cerebrus"
 binaries_dir = root_dir / "Binaries"
 resources_dir = cerebrus_dir / "resources"
@@ -56,6 +61,53 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# Get version from cerebrus module
+version_file = cerebrus_dir / '_version.py'
+version = '0.0.0'
+if version_file.exists():
+    version_content = version_file.read_text()
+    for line in version_content.split('\n'):
+        if line.startswith('__version__'):
+            version = line.split('=')[1].strip().strip('"').strip("'")
+            break
+
+# Version info for Windows executable
+version_info_content = (
+    f'VSVersionInfo(\n'
+    f'  ffi=FixedFileInfo(\n'
+    f'    filevers=({version.replace(".", ", ")}, 0),\n'
+    f'    prodvers=({version.replace(".", ", ")}, 0),\n'
+    f'    mask=0x3f,\n'
+    f'    flags=0x0,\n'
+    f'    OS=0x40004,\n'
+    f'    fileType=0x1,\n'
+    f'    subtype=0x0,\n'
+    f'    date=(0, 0)\n'
+    f'  ),\n'
+    f'  kids=[\n'
+    f'    StringFileInfo(\n'
+    f'      [\n'
+    f'      StringTable(\n'
+    f'        u\'040904B0\',\n'
+    f'        [StringStruct(u\'CompanyName\', u\'LeagueX Gaming Private Limited\'),\n'
+    f'        StringStruct(u\'FileDescription\', u\'Cerebrus - Unreal Engine Android Profiling Tool\'),\n'
+    f'        StringStruct(u\'FileVersion\', u\'{version}\'),\n'
+    f'        StringStruct(u\'InternalName\', u\'Cerebrus\'),\n'
+    f'        StringStruct(u\'LegalCopyright\', u\'© 2025 LeagueX Gaming Private Limited. All rights reserved.\'),\n'
+    f'        StringStruct(u\'OriginalFilename\', u\'Cerebrus.exe\'),\n'
+    f'        StringStruct(u\'ProductName\', u\'Cerebrus\'),\n'
+    f'        StringStruct(u\'ProductVersion\', u\'{version}\')])\n'
+    f'      ]), \n'
+    f'    VarFileInfo([VarStruct(u\'Translation\', [1033, 1200])])\n'
+    f'  ]\n'
+    f')'
+)
+
+# Write version info to a temporary file
+version_file = root_dir / 'build' / 'version_info.txt'
+version_file.parent.mkdir(parents=True, exist_ok=True)
+version_file.write_text(version_info_content, encoding='utf-8')
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -73,6 +125,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=str(resources_dir / 'icon256x256.ico') if (resources_dir / 'icon256x256.ico').exists() else None,
+    version=str(version_file),
 )
 
 coll = COLLECT(

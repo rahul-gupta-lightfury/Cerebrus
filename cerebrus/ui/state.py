@@ -1,4 +1,5 @@
 """State containers for the Cerebrus DearPyGui UI."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -26,9 +27,10 @@ class UIState:
     logs: list[tuple[str, str, str]] = field(default_factory=list)
     log_filter: str = ""
     profile_manager: ProfileManager = field(default_factory=ProfileManager)
-    append_device_to_path: bool = True
-    base_output_path: Path | None = None  # Store the original path without device appended
-    
+    base_output_path: Path | None = (
+        None  # Store the original path without device appended
+    )
+
     # Bulk Action States
     move_logs_enabled: bool = True
     move_csv_enabled: bool = True

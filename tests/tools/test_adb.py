@@ -8,13 +8,19 @@ import pytest
 from cerebrus.tools.adb import AdbClient, AdbError
 
 
-def _completed(stdout: str, returncode: int = 0, stderr: str = "") -> subprocess.CompletedProcess[str]:
-    return subprocess.CompletedProcess(args=["adb"], returncode=returncode, stdout=stdout, stderr=stderr)
+def _completed(
+    stdout: str, returncode: int = 0, stderr: str = ""
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(
+        args=["adb"], returncode=returncode, stdout=stdout, stderr=stderr
+    )
 
 
 @patch("subprocess.run")
 def test_list_devices_parses_device_lines(run_mock: MagicMock) -> None:
-    run_mock.return_value = _completed("emulator-5554\tdevice\n012345\tunauthorized\nreal\tdevice")
+    run_mock.return_value = _completed(
+        "emulator-5554\tdevice\n012345\tunauthorized\nreal\tdevice"
+    )
 
     client = AdbClient()
     devices = client.list_devices()
@@ -39,7 +45,9 @@ def test_get_property_raises_on_failure(run_mock: MagicMock) -> None:
 
 
 @patch("subprocess.run")
-def test_is_package_installed_short_circuits_for_empty_name(run_mock: MagicMock) -> None:
+def test_is_package_installed_short_circuits_for_empty_name(
+    run_mock: MagicMock,
+) -> None:
     client = AdbClient()
 
     assert client.is_package_installed("serial", "") is False

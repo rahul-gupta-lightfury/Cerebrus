@@ -1,4 +1,5 @@
 """Run lightweight validation before launching the UI."""
+
 from __future__ import annotations
 
 from pathlib import Path

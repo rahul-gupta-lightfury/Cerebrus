@@ -1,8 +1,9 @@
 """Thin wrappers around `adb` commands used by Cerebrus."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import subprocess
+from dataclasses import dataclass
 from typing import List
 
 
@@ -56,13 +57,20 @@ class AdbClient:
         """Send a console command to the running Unreal Engine application."""
         # Broadcast intent with 'cmd' extra which UE listens for
         # Command: adb shell am broadcast -a android.intent.action.RUN -e cmd 'command'
-        self._run([
-            "-s", serial, 
-            "shell", 
-            "am", "broadcast", 
-            "-a", "android.intent.action.RUN", 
-            "-e", "cmd", f"'{command}'"
-        ])
+        self._run(
+            [
+                "-s",
+                serial,
+                "shell",
+                "am",
+                "broadcast",
+                "-a",
+                "android.intent.action.RUN",
+                "-e",
+                "cmd",
+                f"'{command}'",
+            ]
+        )
 
     def is_package_running(self, serial: str, package_name: str) -> bool:
         """Check if the package is currently running (has a PID)."""

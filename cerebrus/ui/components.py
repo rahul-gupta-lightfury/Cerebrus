@@ -1,40 +1,37 @@
 """Composable DearPyGui building blocks."""
+
 from __future__ import annotations
 
-from pathlib import Path
+import os
 import subprocess
 import sys
 import webbrowser
-import os
+from pathlib import Path
 from tkinter import Tk, filedialog
 
 import dearpygui.dearpygui as dpg
 
+from cerebrus._version import __version__
 from cerebrus.core.devices import DeviceInfo, collect_device_info
 from cerebrus.tools.adb import AdbClient, AdbError
 from cerebrus.tools.log_to_html import convert_log_to_html
 from cerebrus.ui.state import UIState
 from cerebrus.ui.themes import get_theme_manager
-from cerebrus._version import __version__
-
-
 
 # Log colors are now handled by ThemeManager
 SELECTED_ROW_COLOR = (0, 119, 200, 153)  # Blue highlight with transparency
 
 
-
 # Tooltip definitions
 TOOLTIPS = {
-    "output_file_name": "The name to use for output files. This will be used as the filename or prefix depending on the 'Use as Prefix only' setting.",
-    "use_prefix_only": "When enabled, the Output File Name will be used as a prefix with device-specific information appended. When disabled, it will be used as the exact filename.",
+    "output_file_name": "The name to use for output files. If a file with the same name exists, a counter (_1, _2, etc.) will be added to keep both files. This will be used as the filename or prefix depending on the 'Use as Prefix only' setting.",
+    "use_prefix_only": "When enabled, the Output File Name will be used as a prefix with the original filename appended (e.g., 'prefix_filename.html'). When disabled, all generated files will use the exact Output File Name (with counters added if files exist).",
     "input_path": "The folder path where files will be moved from the device. CSV and Logs subfolders will be created here.",
     "output_path": "The main workspace folder. Files moved from devices will be saved here, and generated reports will be output here.",
-    "append_device": "When enabled, a subfolder with the device make and model will be automatically created in the output path.",
     "move_logs": "Moves log files from the selected device's Unreal Engine Saved/Logs folder to your PC.",
     "move_csv": "Moves CSV profiling data from the selected device's Unreal Engine Saved/Profiling/CSV folder to your PC.",
-    "generate_perf": "Processes CSV files in the Move Files Folder Path using PerfreportTool.exe and generates performance reports in the Output Folder Path. CSV files are deleted after successful processing.",
-    "generate_logs": "Converts text log files (.log, .txt) from the Move Files Folder Path to colored HTML format in the Output Folder Path. Source files are deleted after successful conversion.",
+    "generate_perf": "Generates performance reports from CSV files in the Output Path. Requires CSV files to be present.Source files are deleted after successful conversion.",
+    "generate_logs": "Generates colored HTML logs from text logs in the Output Path. Requires log files to be present.Source files are deleted after successful conversion.",
     "generate_both": "Runs both Perf Report generation and Colored Logs conversion in sequence.",
     "view_html_logs": "Opens the Output Folder Path and allows you to select and view generated HTML log files in your default web browser.",
     "package_name": "The Android package identifier for your application (e.g., com.company.appname). Must start with 'com.' and have at least 3 parts.",
@@ -46,37 +43,63 @@ TOOLTIPS = {
 }
 
 
-
 def _handle_theme_change(state: UIState, palette: str = None, mode: str = None) -> None:
     get_theme_manager().apply_theme(palette, mode)
     _update_profile_display_colors(state)
-    _render_log_entries(state) # Re-render logs to apply new colors
+    _render_log_entries(state)  # Re-render logs to apply new colors
 
 
 def build_menu_bar(state: UIState) -> None:
     """Render the top menu bar."""
     with dpg.menu_bar():
         with dpg.menu(label="File"):
-            dpg.add_menu_item(label="Exit Window", shortcut="Alt+F4", callback=lambda: sys.exit(0))
+            dpg.add_menu_item(
+                label="Exit Window", shortcut="Alt+F4", callback=lambda: sys.exit(0)
+            )
 
         with dpg.menu(label="Tools"):
-            dpg.add_menu_item(label="Echo Test Command", callback=lambda: log_message(state, "INFO", "Echo Test Command Executed"))
+            dpg.add_menu_item(
+                label="Echo Test Command",
+                callback=lambda: log_message(
+                    state, "INFO", "Echo Test Command Executed"
+                ),
+            )
 
         with dpg.menu(label="Profile"):
-            dpg.add_menu_item(label="New", callback=lambda: _show_profile_dialog(state, is_edit=False))
-            dpg.add_menu_item(label="Open", callback=lambda: _open_profile_native(state))
-            dpg.add_menu_item(label="Edit", callback=lambda: _show_profile_dialog(state, is_edit=True))
+            dpg.add_menu_item(
+                label="New", callback=lambda: _show_profile_dialog(state, is_edit=False)
+            )
+            dpg.add_menu_item(
+                label="Open", callback=lambda: _open_profile_native(state)
+            )
+            dpg.add_menu_item(
+                label="Edit", callback=lambda: _show_profile_dialog(state, is_edit=True)
+            )
 
         with dpg.menu(label="Settings"):
             with dpg.menu(label="Load Theme"):
-                dpg.add_menu_item(label="Standard", callback=lambda: _handle_theme_change(state, "Standard", "Dark"))
-                dpg.add_menu_item(label="Deuteranopia", callback=lambda: _handle_theme_change(state, "Deuteranopia", "Dark"))
-                dpg.add_menu_item(label="Tritanopia", callback=lambda: _handle_theme_change(state, "Tritanopia", "Dark"))
-
+                dpg.add_menu_item(
+                    label="Standard",
+                    callback=lambda: _handle_theme_change(state, "Standard", "Dark"),
+                )
+                dpg.add_menu_item(
+                    label="Deuteranopia",
+                    callback=lambda: _handle_theme_change(
+                        state, "Deuteranopia", "Dark"
+                    ),
+                )
+                dpg.add_menu_item(
+                    label="Tritanopia",
+                    callback=lambda: _handle_theme_change(state, "Tritanopia", "Dark"),
+                )
 
         with dpg.menu(label="Help"):
-            dpg.add_menu_item(label="Help", shortcut="F1", callback=lambda: _open_user_guide(state))
-            dpg.add_menu_item(label="Provide Feedback", callback=lambda: _provide_feedback(state))
+            dpg.add_menu_item(
+                label="Help", shortcut="F1", callback=lambda: _open_user_guide(state)
+            )
+            dpg.add_menu_item(
+                label="Provide Feedback", callback=lambda: _provide_feedback(state)
+            )
             dpg.add_menu_item(label="About", callback=lambda: _show_about_dialog(state))
 
 
@@ -85,7 +108,7 @@ def _open_user_guide(state: UIState) -> None:
     # Determine base path
     # Check multiple locations
     possible_paths = []
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         base_path = Path(sys._MEIPASS)
         possible_paths.append(base_path / "cerebrus" / "resources" / "user_guide.html")
         possible_paths.append(base_path / "resources" / "user_guide.html")
@@ -95,13 +118,13 @@ def _open_user_guide(state: UIState) -> None:
     else:
         base_path = Path(__file__).resolve().parent.parent
         possible_paths.append(base_path / "resources" / "user_guide.html")
-    
+
     html_file = None
     for path in possible_paths:
         if path.exists():
             html_file = path
             break
-            
+
     if html_file and html_file.exists():
         try:
             webbrowser.open(f"file:///{html_file.as_posix()}")
@@ -130,7 +153,7 @@ def _show_about_dialog(state: UIState) -> None:
     """Show the About dialog."""
     if dpg.does_item_exist("about_dialog"):
         dpg.delete_item("about_dialog")
-    
+
     # Calculate center position
     viewport_width = dpg.get_viewport_width()
     viewport_height = dpg.get_viewport_height()
@@ -138,50 +161,58 @@ def _show_about_dialog(state: UIState) -> None:
     window_height = 400
     pos_x = (viewport_width - window_width) // 2
     pos_y = (viewport_height - window_height) // 2
-        
+
     with dpg.window(
-        tag="about_dialog", 
-        label="About", 
-        modal=True, 
-        width=window_width, 
-        height=window_height, 
+        tag="about_dialog",
+        label="About",
+        modal=True,
+        width=window_width,
+        height=window_height,
         no_resize=True,
         pos=(pos_x, pos_y),
-        no_scrollbar=True
+        no_scrollbar=True,
     ):
         # Title
         dpg.add_text("Cerebrus", color=(120, 200, 255))
-        
+
         # Version
         dpg.add_text(f"Version: {__version__}")
-        
+
         # Author
         dpg.add_text("Author: Lightfury Games")
-        
+
         # Copyright
-        dpg.add_text("Copyright © 2025 LeagueX Gaming Private Limited (LightFury Games).")
+        dpg.add_text(
+            "Copyright © 2025 LeagueX Gaming Private Limited (LightFury Games)."
+        )
         dpg.add_text("All rights reserved.")
-        
+
         # Repository
         dpg.add_text("Repository:")
-        dpg.add_text("https://github.com/rahul-gupta-lightfury/Cerebrus", color=(100, 150, 255))
-        
+        dpg.add_text(
+            "https://github.com/rahul-gupta-lightfury/Cerebrus", color=(100, 150, 255)
+        )
+
         # Description
-        dpg.add_text("Python-based Windows-only toolkit with a Dear Py Gui UI for managing")
+        dpg.add_text(
+            "Python-based Windows-only toolkit with a Dear Py Gui UI for managing"
+        )
         dpg.add_text("Unreal Engine Android profiling workflows.")
-        
+
         # License
         with dpg.group(horizontal=True):
             dpg.add_text("Licensed under the")
             dpg.add_text("BSD 3-Clause License", color=(100, 150, 255))
             dpg.add_text(".")
-        
+
         dpg.add_spacer(height=20)
-        
+
         # OK Button
         with dpg.group(horizontal=True):
             dpg.add_spacer(width=480)
-            dpg.add_button(label="OK", width=80, callback=lambda: dpg.delete_item("about_dialog"))
+            dpg.add_button(
+                label="OK", width=80, callback=lambda: dpg.delete_item("about_dialog")
+            )
 
 
 def build_profile_summary(state: UIState) -> None:
@@ -190,8 +221,16 @@ def build_profile_summary(state: UIState) -> None:
         dpg.add_text("Profile Name:")
         # Use warning color for default profile, green for loaded profiles
         colors = get_theme_manager().get_profile_status_colors()
-        profile_color = colors["DEFAULT"] if not state.profile_manager.current_profile_path else colors["LOADED"]
-        dpg.add_text(tag="profile_nickname_input", default_value=state.profile_nickname, color=profile_color)
+        profile_color = (
+            colors["DEFAULT"]
+            if not state.profile_manager.current_profile_path
+            else colors["LOADED"]
+        )
+        dpg.add_text(
+            tag="profile_nickname_input",
+            default_value=state.profile_nickname,
+            color=profile_color,
+        )
         dpg.add_text("Package Name:")
         dpg.add_text(
             tag="package_input",
@@ -201,7 +240,11 @@ def build_profile_summary(state: UIState) -> None:
         _add_help_button("package_name")
         dpg.add_text("Profile Path:")
         with dpg.group(horizontal=True, horizontal_spacing=4):
-            dpg.add_text(tag="profile_path_input", default_value=str(state.profile_path), color=profile_color)
+            dpg.add_text(
+                tag="profile_path_input",
+                default_value=str(state.profile_path),
+                color=profile_color,
+            )
             dpg.add_button(label="Open", callback=lambda: _open_profile_folder(state))
 
 
@@ -211,18 +254,30 @@ def build_device_controls(state: UIState) -> None:
     with dpg.group(horizontal=True, horizontal_spacing=8):
         dpg.add_text("Device(s)", color=(120, 180, 255))
         _add_help_button("device_table")
-        dpg.add_button(label="List Devices", width=120, callback=lambda: _populate_devices(state))
+        dpg.add_button(
+            label="List Devices", width=120, callback=lambda: _populate_devices(state)
+        )
         _add_help_button("list_devices")
 
-    with dpg.child_window(border=False, autosize_x=True, height=220, tag="device_table_container"):
+    with dpg.child_window(
+        border=False, autosize_x=True, height=220, tag="device_table_container"
+    ):
         _render_device_table(state)
 
     dpg.add_separator()
     with dpg.group(horizontal=True, horizontal_spacing=8):
         dpg.add_text("Remote Profiling", color=(120, 180, 255))
-        dpg.add_button(label="Start Profiling", width=120, callback=lambda: _handle_start_profiling(state))
+        dpg.add_button(
+            label="Start Profiling",
+            width=120,
+            callback=lambda: _handle_start_profiling(state),
+        )
         _add_help_button("start_profiling", state)
-        dpg.add_button(label="Stop Profiling", width=120, callback=lambda: _handle_stop_profiling(state))
+        dpg.add_button(
+            label="Stop Profiling",
+            width=120,
+            callback=lambda: _handle_stop_profiling(state),
+        )
         _add_help_button("stop_profiling", state)
 
 
@@ -280,29 +335,32 @@ def build_file_actions(state: UIState) -> None:
                     callback=lambda: _open_folder_in_explorer(state.output_path),
                 )
 
-
         with dpg.group(horizontal=True, horizontal_spacing=12):
             with dpg.child_window(border=True, autosize_y=True, width=360):
-                dpg.add_text("Bulk Actions From Selected Phone to PC", color=(200, 200, 200))
+                dpg.add_text(
+                    "Bulk Actions From Selected Phone to PC", color=(200, 200, 200)
+                )
                 with dpg.table(header_row=False, policy=dpg.mvTable_SizingFixedFit):
                     dpg.add_table_column(width_fixed=True, init_width_or_weight=210)
                     dpg.add_table_column(width_fixed=True, init_width_or_weight=30)
-                    
+
                     with dpg.table_row():
                         dpg.add_checkbox(
-                            label="Move logs", 
+                            tag="cb_move_logs",
+                            label="Move logs",
                             default_value=state.move_logs_enabled,
                             callback=_handle_bulk_action_toggle,
-                            user_data=(state, "move_logs_enabled")
+                            user_data=(state, "move_logs_enabled"),
                         )
                         _add_help_button("move_logs")
-                    
+
                     with dpg.table_row():
                         dpg.add_checkbox(
-                            label="Move Profiling Data", 
+                            tag="cb_move_csv",
+                            label="Move Profiling Data",
                             default_value=state.move_csv_enabled,
                             callback=_handle_bulk_action_toggle,
-                            user_data=(state, "move_csv_enabled")
+                            user_data=(state, "move_csv_enabled"),
                         )
                         _add_help_button("move_csv")
 
@@ -311,31 +369,41 @@ def build_file_actions(state: UIState) -> None:
                 with dpg.table(header_row=False, policy=dpg.mvTable_SizingFixedFit):
                     dpg.add_table_column(width_fixed=True, init_width_or_weight=310)
                     dpg.add_table_column(width_fixed=True, init_width_or_weight=30)
-                    
+
                     with dpg.table_row():
                         dpg.add_checkbox(
-                            label="Generate Perf Report Only", 
+                            tag="cb_gen_perf",
+                            label="Generate Perf Report Only",
                             default_value=state.generate_perf_report_enabled,
                             callback=_handle_bulk_action_toggle,
-                            user_data=(state, "generate_perf_report_enabled")
+                            user_data=(state, "generate_perf_report_enabled"),
                         )
                         _add_help_button("generate_perf")
-                    
+
                     with dpg.table_row():
                         dpg.add_checkbox(
-                            label="Generate Colored Logs Only", 
+                            tag="cb_gen_logs",
+                            label="Generate Colored Logs Only",
                             default_value=state.generate_colored_logs_enabled,
                             callback=_handle_bulk_action_toggle,
-                            user_data=(state, "generate_colored_logs_enabled")
+                            user_data=(state, "generate_colored_logs_enabled"),
                         )
                         _add_help_button("generate_logs")
-                    
+
                     with dpg.table_row():
-                        dpg.add_button(label="Generate", width=300, callback=lambda: _handle_generate_actions(state))
+                        dpg.add_button(
+                            label="Generate",
+                            width=300,
+                            callback=lambda: _handle_generate_actions(state),
+                        )
                         _add_help_button("generate_actions")
-                    
+
                     with dpg.table_row():
-                        dpg.add_button(label="View HTML Logs", width=300, callback=lambda: _handle_view_html_logs(state))
+                        dpg.add_button(
+                            label="View HTML Logs",
+                            width=300,
+                            callback=lambda: _handle_view_html_logs(state),
+                        )
                         _add_help_button("view_html_logs")
 
     dpg.add_separator()
@@ -351,20 +419,24 @@ def build_file_actions(state: UIState) -> None:
             )
             dpg.add_button(label="Clear", callback=lambda: _clear_logs(state))
             dpg.add_button(label="Export", callback=lambda: _handle_export_logs(state))
-        with dpg.child_window(border=True, autosize_x=True, height=130, tag="log_container"):
+        with dpg.child_window(
+            border=True, autosize_x=True, height=130, tag="log_container"
+        ):
             _render_log_entries(state)
 
     _register_file_dialogs(state)
 
 
 def _populate_devices(state: UIState) -> None:
-    package_value = dpg.get_value("package_input") if dpg.does_item_exist("package_input") else ""
+    package_value = (
+        dpg.get_value("package_input") if dpg.does_item_exist("package_input") else ""
+    )
     state.package_name = package_value or ""
     state.devices = collect_device_info(state.package_name)
-    
+
     if not state.devices:
         _show_device_troubleshooting_dialog(state)
-        
+
     _refresh_device_table(state)
 
 
@@ -372,7 +444,7 @@ def _show_device_troubleshooting_dialog(state: UIState) -> None:
     """Show a dialog with ADB troubleshooting steps."""
     if dpg.does_item_exist("adb_troubleshoot_dialog"):
         dpg.delete_item("adb_troubleshoot_dialog")
-        
+
     # Center the dialog
     viewport_width = dpg.get_viewport_width()
     viewport_height = dpg.get_viewport_height()
@@ -388,40 +460,49 @@ def _show_device_troubleshooting_dialog(state: UIState) -> None:
         width=width,
         height=height,
         pos=(pos_x, pos_y),
-        no_resize=True
+        no_resize=True,
     ):
         dpg.add_text("No active devices found.", color=(255, 100, 100))
-        dpg.add_text("If your device is connected but not showing up, please try the following:", wrap=460)
+        dpg.add_text(
+            "If your device is connected but not showing up, please try the following:",
+            wrap=460,
+        )
         dpg.add_spacer(height=10)
-        
+
         with dpg.group(horizontal=True):
             dpg.add_text("1.")
             dpg.add_text("Open Command Prompt (cmd.exe) or PowerShell.")
-        
+
         with dpg.group(horizontal=True):
             dpg.add_text("2.")
             dpg.add_text("Run the command:")
             dpg.add_text("adb devices", color=(120, 255, 120))
-            
+
         with dpg.group(horizontal=True):
             dpg.add_text("3.")
             dpg.add_text("Check your phone for a USB Debugging permission popup.")
-        
+
         with dpg.group(horizontal=True):
             dpg.add_text("  ")
-            dpg.add_text("Select 'Always allow' and click Allow.", color=(255, 255, 150))
-            
+            dpg.add_text(
+                "Select 'Always allow' and click Allow.", color=(255, 255, 150)
+            )
+
         with dpg.group(horizontal=True):
             dpg.add_text("4.")
             dpg.add_text("Restart Cerebrus or click 'List Devices' again.")
-            
+
         dpg.add_spacer(height=20)
         dpg.add_separator()
         dpg.add_spacer(height=10)
-        
+
         with dpg.group(horizontal=True):
             dpg.add_spacer(width=380)
-            dpg.add_button(label="OK", width=80, callback=lambda: dpg.delete_item("adb_troubleshoot_dialog"))
+            dpg.add_button(
+                label="OK",
+                width=80,
+                callback=lambda: dpg.delete_item("adb_troubleshoot_dialog"),
+            )
 
 
 def _handle_start_profiling(state: UIState) -> None:
@@ -435,11 +516,19 @@ def _handle_start_profiling(state: UIState) -> None:
         return
 
     client = AdbClient()
-    
+
     # Check if running - Fail if not
     if not client.is_package_running(state.selected_device_serial, state.package_name):
-        log_message(state, "ERROR", f"Package {state.package_name} is not running on the device.")
-        log_message(state, "ERROR", "Please launch the application on the device before starting profiling.")
+        log_message(
+            state,
+            "ERROR",
+            f"Package {state.package_name} is not running on the device.",
+        )
+        log_message(
+            state,
+            "ERROR",
+            "Please launch the application on the device before starting profiling.",
+        )
         return
 
     try:
@@ -455,17 +544,23 @@ def _handle_stop_profiling(state: UIState) -> None:
     if not state.selected_device_serial:
         log_message(state, "ERROR", "No device selected.")
         return
-        
+
     if not state.package_name:
         log_message(state, "ERROR", "Package Name not set.")
         return
 
     client = AdbClient()
-    
+
     # Check if running - Fail if not
     if not client.is_package_running(state.selected_device_serial, state.package_name):
-        log_message(state, "ERROR", f"Package {state.package_name} is not running on the device.")
-        log_message(state, "ERROR", "Cannot stop profiling if the application is not running.")
+        log_message(
+            state,
+            "ERROR",
+            f"Package {state.package_name} is not running on the device.",
+        )
+        log_message(
+            state, "ERROR", "Cannot stop profiling if the application is not running."
+        )
         return
 
     try:
@@ -481,7 +576,9 @@ def _handle_log_filter(sender: int, app_data: str, user_data: UIState) -> None:
     _render_log_entries(user_data)
 
 
-def _handle_output_file_name_change(sender: int, app_data: str, user_data: UIState) -> None:
+def _handle_output_file_name_change(
+    sender: int, app_data: str, user_data: UIState
+) -> None:
     user_data.output_file_name = app_data
     _auto_save_profile(user_data)
 
@@ -491,7 +588,9 @@ def _handle_use_prefix_toggle(sender: int, app_data: bool, user_data: UIState) -
     _auto_save_profile(user_data)
 
 
-def _handle_bulk_action_toggle(sender: int, app_data: bool, user_data: tuple[UIState, str]) -> None:
+def _handle_bulk_action_toggle(
+    sender: int, app_data: bool, user_data: tuple[UIState, str]
+) -> None:
     state, field_name = user_data
     setattr(state, field_name, app_data)
     _auto_save_profile(state)
@@ -513,12 +612,11 @@ def _open_profile_folder(state: UIState) -> None:
     """Open the folder containing the current profile."""
     if state.profile_path and state.profile_path.exists():
         if state.profile_path.is_file():
-             _open_folder_in_explorer(state.profile_path.parent)
+            _open_folder_in_explorer(state.profile_path.parent)
         else:
-             _open_folder_in_explorer(state.profile_path)
+            _open_folder_in_explorer(state.profile_path)
     else:
         log_message(state, "WARNING", "Profile path does not exist.")
-
 
 
 def _handle_move_csv(state: UIState) -> None:
@@ -527,6 +625,37 @@ def _handle_move_csv(state: UIState) -> None:
 
 def _handle_move_logs(state: UIState) -> None:
     _move_files_from_device(state, "Logs", "Logs")
+
+
+def _get_unique_output_path(base_path: Path, filename: str, extension: str) -> Path:
+    """
+    Generate a unique file path by appending a counter if the file already exists.
+
+    Args:
+        base_path: Directory where the file will be saved
+        filename: Desired filename without extension
+        extension: File extension (with or without leading dot)
+
+    Returns:
+        A unique Path object that doesn't conflict with existing files
+    """
+    # Ensure extension has a leading dot
+    if not extension.startswith("."):
+        extension = f".{extension}"
+
+    output_path = base_path / f"{filename}{extension}"
+
+    # If file doesn't exist, return it
+    if not output_path.exists():
+        return output_path
+
+    # File exists, find a unique name by appending counter
+    counter = 1
+    while True:
+        output_path = base_path / f"{filename}_{counter}{extension}"
+        if not output_path.exists():
+            return output_path
+        counter += 1
 
 
 def _handle_generate_perf_report(state: UIState) -> None:
@@ -540,14 +669,16 @@ def _handle_generate_perf_report(state: UIState) -> None:
         log_message(state, "ERROR", f"PerfreportTool not found at: {tool_path}")
         return
 
-    # Input CSV directory: {Move Files Folder Path}\CSV
-    csv_dir = state.input_path / "CSV"
+    # Input CSV directory: Use base path / CSV (where files are actually moved)
+    base_path = state.base_output_path if state.base_output_path else state.output_path
+    csv_dir = base_path / "CSV"
     if not csv_dir.exists():
         log_message(state, "ERROR", f"CSV directory not found: {csv_dir}")
         return
 
-    # Output directory: {Output Folder Path}
+    # Output directory: state.output_path (which includes device folder if set)
     output_dir = state.output_path
+
     if not output_dir.exists():
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -560,71 +691,93 @@ def _handle_generate_perf_report(state: UIState) -> None:
         log_message(state, "WARNING", f"No CSV files found in {csv_dir}")
         return
 
-    log_message(state, "INFO", f"Found {len(csv_files)} CSV files. Starting processing...")
+    log_message(
+        state, "INFO", f"Found {len(csv_files)} CSV files. Starting processing..."
+    )
 
     for csv_file in csv_files:
-        # Construct command
-        # Command: "{Tool}" -csv "{Input}" -reportType Default60fps -o "{Output}" -perfLog
-        
-        # Output path usually expects a filename prefix or full path. 
-        # User specified: "{Ouput Folder Path}\{CSV File Name}"
-        # We'll use the stem of the CSV file as the name.
-        output_file_path = output_dir / csv_file.stem
-        
+        # Determine output filename based on use_prefix_only setting
+        if state.use_prefix_only:
+            # Use output_file_name as prefix + CSV filename
+            if state.output_file_name:
+                output_filename = f"{state.output_file_name}_{csv_file.stem}"
+            else:
+                output_filename = csv_file.stem
+        else:
+            # Use output_file_name as exact filename (or CSV filename if not set)
+            output_filename = (
+                state.output_file_name if state.output_file_name else csv_file.stem
+            )
+
+        # Get unique path to avoid overwriting existing files
+        # PerfreportTool generates .html output
+        output_file_path = _get_unique_output_path(output_dir, output_filename, ".html")
+
+        # Remove extension for the -o parameter (tool adds it automatically)
+        output_path_param = output_file_path.with_suffix("")
+
         cmd = [
             str(tool_path),
-            "-csv", str(csv_file),
-            "-reportType", "Default60fps",
-            "-o", str(output_file_path),
-            "-perfLog"
+            "-csv",
+            str(csv_file),
+            "-reportType",
+            "Default60fps",
+            "-o",
+            str(output_path_param),
+            "-perfLog",
         ]
 
         log_message(state, "INFO", f"Processing {csv_file.name}...")
-        
+
         try:
             # Run command
             # Create startupinfo to hide console window on Windows
             startupinfo = None
-            if hasattr(subprocess, 'STARTUPINFO'):
+            if hasattr(subprocess, "STARTUPINFO"):
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                
+
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                startupinfo=startupinfo
+                cmd, capture_output=True, text=True, startupinfo=startupinfo
             )
 
             if result.returncode == 0:
-                log_message(state, "SUCCESS", f"Generated report for {csv_file.name}")
+                log_message(
+                    state, "SUCCESS", f"Generated report: {output_file_path.name}"
+                )
                 # Delete the CSV file
                 try:
                     csv_file.unlink()
                     log_message(state, "INFO", f"Deleted {csv_file.name}")
                 except Exception as e:
-                    log_message(state, "WARNING", f"Failed to delete {csv_file.name}: {e}")
+                    log_message(
+                        state, "WARNING", f"Failed to delete {csv_file.name}: {e}"
+                    )
             else:
                 log_message(state, "ERROR", f"Failed to process {csv_file.name}")
                 log_message(state, "ERROR", f"Tool Output: {result.stdout}")
                 log_message(state, "ERROR", f"Tool Error: {result.stderr}")
 
         except Exception as e:
-            log_message(state, "ERROR", f"Exception while processing {csv_file.name}: {e}")
+            log_message(
+                state, "ERROR", f"Exception while processing {csv_file.name}: {e}"
+            )
 
     log_message(state, "INFO", "Batch processing completed.")
 
 
 def _handle_generate_colored_logs(state: UIState) -> None:
     """Convert text logs to colored HTML logs."""
-    # Input Logs directory: {Move Files Folder Path}\Logs
-    logs_dir = state.input_path / "Logs"
+    # Input Logs directory: Use base path / Logs (where files are actually moved)
+    base_path = state.base_output_path if state.base_output_path else state.output_path
+    logs_dir = base_path / "Logs"
     if not logs_dir.exists():
         log_message(state, "ERROR", f"Logs directory not found: {logs_dir}")
         return
 
-    # Output directory: {Output Folder Path}
+    # Output directory: state.output_path (which includes device folder if set)
     output_dir = state.output_path
+
     if not output_dir.exists():
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -637,19 +790,34 @@ def _handle_generate_colored_logs(state: UIState) -> None:
         log_message(state, "WARNING", f"No log files found in {logs_dir}")
         return
 
-    log_message(state, "INFO", f"Found {len(log_files)} log files. Starting conversion...")
+    log_message(
+        state, "INFO", f"Found {len(log_files)} log files. Starting conversion..."
+    )
 
     for log_file in log_files:
-        # Output HTML file path
-        output_file_path = output_dir / f"{log_file.stem}.html"
-        
+        # Determine output filename based on use_prefix_only setting
+        if state.use_prefix_only:
+            # Use output_file_name as prefix + log filename
+            if state.output_file_name:
+                output_filename = f"{state.output_file_name}_{log_file.stem}"
+            else:
+                output_filename = log_file.stem
+        else:
+            # Use output_file_name as exact filename (or log filename if not set)
+            output_filename = (
+                state.output_file_name if state.output_file_name else log_file.stem
+            )
+
+        # Get unique path to avoid overwriting existing files
+        output_file_path = _get_unique_output_path(output_dir, output_filename, ".html")
+
         log_message(state, "INFO", f"Converting {log_file.name}...")
-        
+
         try:
             # Run conversion directly
             convert_log_to_html(log_file, output_file_path)
             log_message(state, "SUCCESS", f"Created {output_file_path.name}")
-            
+
             # Delete the source file
             try:
                 log_file.unlink()
@@ -658,22 +826,24 @@ def _handle_generate_colored_logs(state: UIState) -> None:
                 log_message(state, "WARNING", f"Failed to delete {log_file.name}: {e}")
 
         except Exception as e:
-            log_message(state, "ERROR", f"Exception while converting {log_file.name}: {e}")
+            log_message(
+                state, "ERROR", f"Exception while converting {log_file.name}: {e}"
+            )
 
     log_message(state, "INFO", "Log conversion completed.")
 
 
 def _handle_view_html_logs(state: UIState) -> None:
     """Open HTML log files in the default web browser."""
-    # Output directory: {Output Folder Path}
+    # Output directory: state.output_path (device-specific folder)
     output_dir = state.output_path
     if not output_dir.exists():
         log_message(state, "ERROR", f"Output directory not found: {output_dir}")
         return
 
-    # Find all HTML files in the output directory
-    html_files = list(output_dir.glob("*.html"))
-    
+    # Find all HTML files recursively in the output directory and subdirectories
+    html_files = list(output_dir.glob("**/*.html"))
+
     if not html_files:
         log_message(state, "WARNING", f"No HTML files found in {output_dir}")
         log_message(state, "INFO", "Generate colored logs first to create HTML files.")
@@ -681,9 +851,9 @@ def _handle_view_html_logs(state: UIState) -> None:
 
     # Sort by modification time (newest first)
     html_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-    
+
     log_message(state, "INFO", f"Found {len(html_files)} HTML file(s) in {output_dir}")
-    
+
     # Show a dialog to select which HTML file to open
     _show_html_file_selector(state, html_files)
 
@@ -692,39 +862,46 @@ def _show_html_file_selector(state: UIState, html_files: list) -> None:
     """Show a dialog to select and open HTML files."""
     if dpg.does_item_exist("html_viewer_dialog"):
         dpg.delete_item("html_viewer_dialog")
-    
-    with dpg.window(tag="html_viewer_dialog", label="Select HTML Log to View", modal=True, width=600, height=400):
+
+    with dpg.window(
+        tag="html_viewer_dialog",
+        label="Select HTML Log to View",
+        modal=True,
+        width=600,
+        height=400,
+    ):
         dpg.add_text("Available HTML Log Files:", color=(120, 180, 255))
         dpg.add_separator()
-        
+
         with dpg.child_window(border=True, autosize_x=True, height=280):
             for html_file in html_files:
                 # Get file modification time
                 from datetime import datetime
+
                 mtime = datetime.fromtimestamp(html_file.stat().st_mtime)
                 time_str = mtime.strftime("%Y-%m-%d %H:%M:%S")
-                
+
                 # Create a button for each file
                 with dpg.group(horizontal=True):
                     dpg.add_button(
                         label=f"📄 {html_file.name}",
                         width=400,
                         callback=lambda s, a, u: _open_html_file(state, u),
-                        user_data=html_file
+                        user_data=html_file,
                     )
                     dpg.add_text(f"Modified: {time_str}", color=(150, 150, 150))
-        
+
         dpg.add_separator()
         with dpg.group(horizontal=True):
             dpg.add_button(
                 label="Open All",
                 width=120,
-                callback=lambda: _open_all_html_files(state, html_files)
+                callback=lambda: _open_all_html_files(state, html_files),
             )
             dpg.add_button(
                 label="Close",
                 width=120,
-                callback=lambda: dpg.delete_item("html_viewer_dialog")
+                callback=lambda: dpg.delete_item("html_viewer_dialog"),
             )
 
 
@@ -747,17 +924,18 @@ def _open_all_html_files(state: UIState, html_files: list) -> None:
             opened_count += 1
         except Exception as e:
             log_message(state, "ERROR", f"Failed to open {html_file.name}: {e}")
-    
+
     if opened_count > 0:
         log_message(state, "SUCCESS", f"Opened {opened_count} HTML file(s) in browser")
-    
+
     # Close the dialog
     if dpg.does_item_exist("html_viewer_dialog"):
         dpg.delete_item("html_viewer_dialog")
 
 
-
-def _move_files_from_device(state: UIState, source_subpath: str, dest_subpath: str) -> None:
+def _move_files_from_device(
+    state: UIState, source_subpath: str, dest_subpath: str
+) -> None:
     if not state.selected_device_serial:
         log_message(state, "ERROR", "No device selected.")
         return
@@ -768,17 +946,21 @@ def _move_files_from_device(state: UIState, source_subpath: str, dest_subpath: s
 
     parts = state.package_name.split(".")
     if len(parts) < 3:
-        log_message(state, "ERROR", "Invalid Package Name format. Cannot derive Project Name.")
+        log_message(
+            state, "ERROR", "Invalid Package Name format. Cannot derive Project Name."
+        )
         return
     project_name = parts[-1]
 
     # Source: /sdcard/Android/data/{package}/files/UnrealGame/{project}/{project}/Saved/{source_subpath}/
     # User confirmed structure: UnrealGame/{Name}/{Name}/Saved/...
     source_path = f"/sdcard/Android/data/{state.package_name}/files/UnrealGame/{project_name}/{project_name}/Saved/{source_subpath}/"
-    
-    # Dest: {state.output_path}/{dest_subpath}/
-    dest_path = state.output_path / dest_subpath
-    
+
+    # Dest: Use base_output_path (not device-specific) / {dest_subpath}/
+    # This ensures files go to OutputPath/CSV and OutputPath/Logs, not OutputPath/Device/CSV
+    base_path = state.base_output_path if state.base_output_path else state.output_path
+    dest_path = base_path / dest_subpath
+
     if not dest_path.exists():
         dest_path.mkdir(parents=True, exist_ok=True)
 
@@ -791,10 +973,10 @@ def _move_files_from_device(state: UIState, source_subpath: str, dest_subpath: s
         # Pull all files from source directory
         # Append . to source path to pull contents
         client.pull(serial, source_path + ".", str(dest_path))
-        
+
         # Delete files from source
         client.shell(serial, ["rm", "-rf", source_path + "*"])
-        
+
         log_message(state, "SUCCESS", f"Moved files to {dest_path}")
     except AdbError as e:
         error_msg = str(e)
@@ -828,18 +1010,18 @@ def _render_log_entries(state: UIState) -> None:
         return
 
     log_colors = get_theme_manager().get_log_colors()
-    
+
     for timestamp, level, message in filtered_logs:
         color = log_colors.get(level.upper(), (220, 220, 220))
         full_msg = f"[{timestamp}] [{level}] {message}"
-        
+
         item = dpg.add_input_text(
             default_value=full_msg,
             readonly=True,
             width=-1,
             parent="log_container",
         )
-        
+
         theme = _get_log_theme(level.upper(), color)
         dpg.bind_item_theme(item, theme)
 
@@ -855,20 +1037,21 @@ def _get_log_theme(level: str, color: tuple) -> int:
     if level in _LOG_THEMES:
         if dpg.does_item_exist(_LOG_THEMES[level]):
             return _LOG_THEMES[level]
-            
+
     with dpg.theme() as theme:
         with dpg.theme_component(dpg.mvInputText):
             dpg.add_theme_color(dpg.mvThemeCol_Text, color)
             dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 0)
             dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 0, 0)
             dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (0, 0, 0, 0))
-            
+
     _LOG_THEMES[level] = theme
     return theme
 
 
 def log_message(state: UIState, level: str, message: str) -> None:
     from datetime import datetime
+
     timestamp = datetime.now().strftime("%d-%m-%y %H:%M:%S")
     state.logs.append((timestamp, level, message))
     _render_log_entries(state)
@@ -884,23 +1067,27 @@ def _handle_export_logs(state: UIState) -> None:
     try:
         root = Tk()
         root.withdraw()
-        root.attributes('-topmost', True)
-        
+        root.attributes("-topmost", True)
+
         file_path = filedialog.asksaveasfilename(
             title="Export Logs",
             defaultextension=".log",
-            filetypes=[("Log Files", "*.log"), ("Text Files", "*.txt"), ("All Files", "*.*")]
+            filetypes=[
+                ("Log Files", "*.log"),
+                ("Text Files", "*.txt"),
+                ("All Files", "*.*"),
+            ],
         )
-        
+
         root.destroy()
-        
+
         if file_path:
             with open(file_path, "w", encoding="utf-8") as f:
                 for timestamp, level, message in state.logs:
                     f.write(f"[{timestamp}] [{level}] {message}\n")
-            
+
             log_message(state, "SUCCESS", f"Logs exported to {file_path}")
-            
+
     except Exception as e:
         log_message(state, "ERROR", f"Failed to export logs: {e}")
 
@@ -965,9 +1152,13 @@ def _render_device_row(row_index: int, device: DeviceInfo, state: UIState) -> No
             # Color code the Package Found column (last column)
             if column_index == len(values) - 1:  # Package Found column
                 if device.package_found:
-                    text_color = get_theme_manager().get_log_colors().get("SUCCESS", (0, 255, 0))
+                    text_color = (
+                        get_theme_manager().get_log_colors().get("SUCCESS", (0, 255, 0))
+                    )
                 else:
-                    text_color = get_theme_manager().get_log_colors().get("ERROR", (255, 0, 0))
+                    text_color = (
+                        get_theme_manager().get_log_colors().get("ERROR", (255, 0, 0))
+                    )
                 # Use text with color instead of selectable for this column
                 dpg.add_text(value, color=text_color, tag=cell_tag)
             else:
@@ -987,18 +1178,24 @@ def _render_device_row(row_index: int, device: DeviceInfo, state: UIState) -> No
         _select_device_row(row_index, state)
 
 
-def _handle_device_select(sender: int, app_data: int, user_data: tuple[UIState, int, str]) -> None:
+def _handle_device_select(
+    sender: int, app_data: int, user_data: tuple[UIState, int, str]
+) -> None:
     state, row_index, serial = user_data
-    
+
     # Check if package found on this device
     selected_device = None
     for device in state.devices:
         if device.serial == serial:
             selected_device = device
             break
-            
+
     if selected_device and not selected_device.package_found:
-        log_message(state, "WARNING", f"Package not found on {selected_device.make} {selected_device.model}. Please install the necessary package.")
+        log_message(
+            state,
+            "WARNING",
+            f"Package not found on {selected_device.make} {selected_device.model}. Please install the necessary package.",
+        )
         # Don't select the row
         return
 
@@ -1007,30 +1204,20 @@ def _handle_device_select(sender: int, app_data: int, user_data: tuple[UIState, 
     if not dpg.does_item_exist("device_table"):
         return
     _select_device_row(row_index, state)
-    
-    # Update output path if append is enabled
-    if state.append_device_to_path:
-        # Ensure base path is set
+
+    # Update output path to show device-specific folder
+    if selected_device:
+        # Store base path if not already stored
         if state.base_output_path is None:
             state.base_output_path = state.output_path
 
-        # Find the device info
-        selected_device = None
-        for device in state.devices:
-            if device.serial == serial:
-                selected_device = device
-                break
-        
-        if selected_device:
-            device_folder = f"{selected_device.make}_{selected_device.model}"
-            new_path = state.base_output_path / device_folder
-            state.output_path = new_path
-            if dpg.does_item_exist("output_path_label"):
-                dpg.set_value("output_path_label", str(new_path))
-            log_message(state, "INFO", f"Output path updated for new device: {new_path}")
+        device_folder = f"{selected_device.make}_{selected_device.model}"
+        state.output_path = state.base_output_path / device_folder
 
-    # Update output file name to match device make and model
-    if selected_device:
+        if dpg.does_item_exist("output_path_label"):
+            dpg.set_value("output_path_label", str(state.output_path))
+
+        # Update output file name to match device make and model
         new_file_name = f"{selected_device.make}_{selected_device.model}"
         state.output_file_name = new_file_name
         if dpg.does_item_exist("output_file_name"):
@@ -1053,7 +1240,9 @@ def _select_device_row(row_index: int, state: UIState) -> None:
     if 0 <= row_index < len(state.device_cell_tags):
         for col_idx, tag in enumerate(state.device_cell_tags[row_index]):
             # Skip the last column (Package Found) as it's a text widget, not selectable
-            if col_idx < len(state.device_cell_tags[row_index]) - 1 and dpg.does_item_exist(tag):
+            if col_idx < len(
+                state.device_cell_tags[row_index]
+            ) - 1 and dpg.does_item_exist(tag):
                 dpg.set_value(tag, True)
 
 
@@ -1068,25 +1257,31 @@ def _browse_folder_native(state: UIState, path_type: str) -> None:
         # Create a hidden Tk root window
         root = Tk()
         root.withdraw()  # Hide the main window
-        root.attributes('-topmost', True)  # Bring dialog to front
-        
+        root.attributes("-topmost", True)  # Bring dialog to front
+
         # Get initial directory
         if path_type == "input":
-            initial_dir = str(state.input_path) if state.input_path.exists() else str(Path.home())
+            initial_dir = (
+                str(state.input_path) if state.input_path.exists() else str(Path.home())
+            )
         else:  # output
-            initial_dir = str(state.output_path) if state.output_path.exists() else str(Path.home())
-        
+            initial_dir = (
+                str(state.output_path)
+                if state.output_path.exists()
+                else str(Path.home())
+            )
+
         # Show folder selection dialog
         folder_path = filedialog.askdirectory(
             title=f"Select {'Input' if path_type == 'input' else 'Output'} Folder",
-            initialdir=initial_dir
+            initialdir=initial_dir,
         )
-        
+
         root.destroy()  # Clean up
-        
+
         if folder_path:  # User selected a folder
             selected_path = Path(folder_path)
-            
+
             if path_type == "input":
                 state.input_path = selected_path
                 if dpg.does_item_exist("input_path_label"):
@@ -1094,31 +1289,16 @@ def _browse_folder_native(state: UIState, path_type: str) -> None:
                 log_message(state, "SUCCESS", f"Input path set to: {selected_path}")
                 _auto_save_profile(state)
             else:  # output
-                # Update base path
                 state.base_output_path = selected_path
-                
-                # Check if we need to append device info
-                if state.append_device_to_path and state.selected_device_serial:
-                    # Find the selected device
-                    selected_device = None
-                    for device in state.devices:
-                        if device.serial == state.selected_device_serial:
-                            selected_device = device
-                            break
-                    
-                    if selected_device:
-                        device_folder = f"{selected_device.make}_{selected_device.model}"
-                        state.output_path = selected_path / device_folder
-                    else:
-                        state.output_path = selected_path
-                else:
-                    state.output_path = selected_path
-                
+                state.output_path = selected_path
+
                 if dpg.does_item_exist("output_path_label"):
                     dpg.set_value("output_path_label", str(state.output_path))
-                log_message(state, "SUCCESS", f"Output path set to: {state.output_path}")
+                log_message(
+                    state, "SUCCESS", f"Output path set to: {state.output_path}"
+                )
                 _auto_save_profile(state)
-                
+
     except Exception as e:
         log_message(state, "ERROR", f"Failed to open folder browser: {e}")
 
@@ -1129,7 +1309,7 @@ def _open_folder_in_explorer(folder_path: Path) -> None:
         if not folder_path.exists():
             # Try to create the folder
             folder_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Open in Windows Explorer
         os.startfile(str(folder_path))
     except Exception as e:
@@ -1165,9 +1345,13 @@ def _register_file_dialogs(state: UIState) -> None:
             dpg.add_file_extension(".*")
 
 
-def _handle_input_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
+def _handle_input_path_selected(
+    sender: int, app_data: dict, user_data: UIState
+) -> None:
     # For directory selector, use file_path_name; for file selector, use selections
-    selection = app_data.get("file_path_name") or next(iter(app_data.get("selections", {}).values()), None)
+    selection = app_data.get("file_path_name") or next(
+        iter(app_data.get("selections", {}).values()), None
+    )
     if selection is None:
         return
 
@@ -1175,46 +1359,31 @@ def _handle_input_path_selected(sender: int, app_data: dict, user_data: UIState)
     path = Path(selection)
     if not path.exists():
         return
-    
+
     user_data.input_path = path
     if dpg.does_item_exist("input_path_label"):
         dpg.set_value("input_path_label", str(path))
-        
+
     _auto_save_profile(user_data)
 
 
-def _handle_output_path_selected(sender: int, app_data: dict, user_data: UIState) -> None:
-    selection = app_data.get("file_path_name") or next(iter(app_data.get("selections", {}).values()), None)
+def _handle_output_path_selected(
+    sender: int, app_data: dict, user_data: UIState
+) -> None:
+    selection = app_data.get("file_path_name") or next(
+        iter(app_data.get("selections", {}).values()), None
+    )
     if selection is None:
         return
 
-    new_base_path = Path(selection)
-    user_data.base_output_path = new_base_path
-    
-    if user_data.append_device_to_path:
-        # Re-apply device suffix
-        selected_device = None
-        if user_data.selected_device_serial:
-            for device in user_data.devices:
-                if device.serial == user_data.selected_device_serial:
-                    selected_device = device
-                    break
-        
-        if selected_device:
-            device_folder = f"{selected_device.make}_{selected_device.model}"
-            user_data.output_path = new_base_path / device_folder
-        else:
-             # Fallback if no device selected
-             user_data.output_path = new_base_path
-    else:
-        user_data.output_path = new_base_path
+    user_data.output_path = Path(selection)
 
     # Sync input path with output path
     user_data.input_path = user_data.output_path
 
     if dpg.does_item_exist("output_path_label"):
         dpg.set_value("output_path_label", str(user_data.output_path))
-        
+
     _auto_save_profile(user_data)
 
 
@@ -1225,7 +1394,7 @@ def _handle_package_name_change(sender: int, app_data: str, user_data: UIState) 
         # We could show an error, or just let it be invalid until save?
         # User said "cannot be null and must start with com."
         # We can change text color to red if invalid?
-        dpg.configure_item(sender, user_data=user_data) # Trigger update?
+        dpg.configure_item(sender, user_data=user_data)  # Trigger update?
         pass
 
 
@@ -1233,13 +1402,29 @@ def _show_profile_dialog(state: UIState, is_edit: bool = False) -> None:
     if is_edit:
         # Check if default profile
         if not state.profile_manager.current_profile_path:
-             # Show warning and log it
-             log_message(state, "WARNING", "Cannot edit Default Profile. Please create a New Profile or Open an existing one.")
-             if not dpg.does_item_exist("default_profile_warning"):
-                 with dpg.window(tag="default_profile_warning", label="Warning", modal=True, width=400, height=150):
-                     dpg.add_text("Cannot edit the Default Profile.\nPlease create a New Profile or Open an existing one.")
-                     dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item("default_profile_warning"))
-             return
+            # Show warning and log it
+            log_message(
+                state,
+                "WARNING",
+                "Cannot edit Default Profile. Please create a New Profile or Open an existing one.",
+            )
+            if not dpg.does_item_exist("default_profile_warning"):
+                with dpg.window(
+                    tag="default_profile_warning",
+                    label="Warning",
+                    modal=True,
+                    width=400,
+                    height=150,
+                ):
+                    dpg.add_text(
+                        "Cannot edit the Default Profile.\nPlease create a New Profile or Open an existing one."
+                    )
+                    dpg.add_button(
+                        label="OK",
+                        width=100,
+                        callback=lambda: dpg.delete_item("default_profile_warning"),
+                    )
+            return
     else:
         # Creating new profile
         log_message(state, "INFO", "Opening New Profile dialog")
@@ -1250,7 +1435,7 @@ def _show_profile_dialog(state: UIState, is_edit: bool = False) -> None:
         dpg.delete_item("profile_dialog")
 
     title = "Edit Profile" if is_edit else "New Profile"
-    
+
     # Pre-fill values ONLY if editing an existing profile
     if is_edit:
         profile = state.profile_manager.current_profile
@@ -1261,7 +1446,9 @@ def _show_profile_dialog(state: UIState, is_edit: bool = False) -> None:
         nickname = ""
         package_name = ""
 
-    with dpg.window(tag="profile_dialog", label=title, modal=True, width=500, height=250):
+    with dpg.window(
+        tag="profile_dialog", label=title, modal=True, width=500, height=250
+    ):
         with dpg.table(header_row=False, policy=dpg.mvTable_SizingStretchProp):
             dpg.add_table_column(width_fixed=True, init_width_or_weight=100)
             dpg.add_table_column(init_width_or_weight=1)
@@ -1279,8 +1466,12 @@ def _show_profile_dialog(state: UIState, is_edit: bool = False) -> None:
 
         dpg.add_separator()
         with dpg.group(horizontal=True):
-            dpg.add_button(label="Save", callback=lambda: _handle_profile_save(state, is_edit))
-            dpg.add_button(label="Cancel", callback=lambda: dpg.delete_item("profile_dialog"))
+            dpg.add_button(
+                label="Save", callback=lambda: _handle_profile_save(state, is_edit)
+            )
+            dpg.add_button(
+                label="Cancel", callback=lambda: dpg.delete_item("profile_dialog")
+            )
 
 
 def _handle_profile_save(state: UIState, is_edit: bool) -> None:
@@ -1291,35 +1482,51 @@ def _handle_profile_save(state: UIState, is_edit: bool) -> None:
     if not package_name:
         log_message(state, "ERROR", "Package Name cannot be empty.")
         return
-    
+
     if not package_name.startswith("com."):
-        log_message(state, "ERROR", f"Invalid Package Name: '{package_name}'. Package name must start with 'com.'")
-        log_message(state, "INFO", "Correct format: com.{{company}}.{{product}} (e.g., com.lightfury.titan)")
+        log_message(
+            state,
+            "ERROR",
+            f"Invalid Package Name: '{package_name}'. Package name must start with 'com.'",
+        )
+        log_message(
+            state,
+            "INFO",
+            "Correct format: com.{{company}}.{{product}} (e.g., com.lightfury.titan)",
+        )
         return
-    
+
     # Check if it has at least 3 parts: com.company.product
     parts = package_name.split(".")
     if len(parts) < 3:
-        log_message(state, "ERROR", f"Invalid Package Name: '{package_name}'. Must have format: com.{{company}}.{{product}}")
-        log_message(state, "INFO", "Correct format: com.{{company}}.{{product}} (e.g., com.lightfury.titan)")
+        log_message(
+            state,
+            "ERROR",
+            f"Invalid Package Name: '{package_name}'. Must have format: com.{{company}}.{{product}}",
+        )
+        log_message(
+            state,
+            "INFO",
+            "Correct format: com.{{company}}.{{product}} (e.g., com.lightfury.titan)",
+        )
         return
 
-    # If new, we need a path to save to. 
+    # If new, we need a path to save to.
     # For now, let's just save to a default location or ask?
-    # The reference image doesn't show a path selector for the profile itself, 
+    # The reference image doesn't show a path selector for the profile itself,
     # but "Profile Path" is in the main UI.
     # If "New", we probably need to ask where to save the JSON.
-    
+
     # Let's close the dialog and ask for save location if it's new.
     # Or if it's edit, just save.
-    
+
     dpg.delete_item("profile_dialog")
-    
+
     # Update state
     state.package_name = package_name
     if dpg.does_item_exist("package_input"):
         dpg.set_value("package_input", package_name)
-    
+
     # For NEW profiles, ALWAYS prompt for save location
     # For EDIT, only prompt if no path exists (shouldn't happen but safety check)
     if not is_edit or not state.profile_manager.current_profile_path:
@@ -1338,8 +1545,12 @@ def _handle_profile_save(state: UIState, is_edit: bool) -> None:
             profile.package_name = package_name
             state.profile_manager.save_current_profile()
             state.profile_nickname = nickname or "None"
-            
-            log_message(state, "SUCCESS", f"Profile '{state.profile_nickname}' saved successfully.")
+
+            log_message(
+                state,
+                "SUCCESS",
+                f"Profile '{state.profile_nickname}' saved successfully.",
+            )
 
             # Refresh UI
             if dpg.does_item_exist("profile_nickname_input"):
@@ -1349,27 +1560,27 @@ def _handle_profile_save(state: UIState, is_edit: bool) -> None:
 
 
 def _save_current_profile(state: UIState) -> None:
-    if state.profile_manager.current_profile and state.profile_manager.current_profile_path:
+    if (
+        state.profile_manager.current_profile
+        and state.profile_manager.current_profile_path
+    ):
         # Update profile from current UI state
         profile = state.profile_manager.current_profile
         profile.package_name = state.package_name
-        
+
         # Update fields from UI/State
         if dpg.does_item_exist("output_file_name"):
             state.output_file_name = dpg.get_value("output_file_name")
-        
+
         profile.output_file_name = state.output_file_name
         profile.input_path = str(state.input_path)
-        
-        # Save base_output_path if available to avoid saving the appended device path
+        # Save base_output_path if available to avoid saving device-specific path
         if state.base_output_path:
             profile.output_path = str(state.base_output_path)
         else:
             profile.output_path = str(state.output_path)
-            
         profile.use_prefix_only = state.use_prefix_only
-        profile.append_device_to_path = state.append_device_to_path
-        
+
         state.profile_manager.save_current_profile()
     else:
         # No current profile path, prompt to save as new
@@ -1381,35 +1592,33 @@ def _auto_save_profile(state: UIState) -> None:
     """Automatically save specific fields to the current profile."""
     if state.profile_manager.current_profile:
         profile = state.profile_manager.current_profile
-        
+
         # Update fields
         if dpg.does_item_exist("output_file_name"):
             state.output_file_name = dpg.get_value("output_file_name")
-            
+
         profile.output_file_name = state.output_file_name
         profile.input_path = str(state.input_path)
-        
-        # Save base_output_path if available to avoid saving the appended device path
+        # Save base_output_path if available to avoid saving device-specific path
         if state.base_output_path:
             profile.output_path = str(state.base_output_path)
         else:
             profile.output_path = str(state.output_path)
-            
         profile.use_prefix_only = state.use_prefix_only
-        profile.append_device_to_path = state.append_device_to_path
-        
+
         # Save bulk action states
         profile.move_logs_enabled = state.move_logs_enabled
         profile.move_csv_enabled = state.move_csv_enabled
         profile.generate_perf_report_enabled = state.generate_perf_report_enabled
         profile.generate_colored_logs_enabled = state.generate_colored_logs_enabled
-        
+
         if state.profile_manager.current_profile_path:
             state.profile_manager.save_current_profile()
         else:
             # Shadow save for default profile (allow caching for default)
             try:
                 from cerebrus.core.profile import CONFIG_DIR
+
                 shadow_path = CONFIG_DIR / "default_profile.json"
                 if not CONFIG_DIR.exists():
                     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -1419,30 +1628,28 @@ def _auto_save_profile(state: UIState) -> None:
                 print(f"Failed to shadow save default profile: {e}")
 
 
-
-
 def _save_profile_native(state: UIState, default_name: str) -> None:
     """Open native save dialog for profile."""
     try:
         root = Tk()
         root.withdraw()
-        root.attributes('-topmost', True)
-        
+        root.attributes("-topmost", True)
+
         default_filename = f"{default_name}.json" if default_name else "profile.json"
-        
+
         file_path = filedialog.asksaveasfilename(
             title="Save Profile As",
             initialfile=default_filename,
             defaultextension=".json",
-            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")],
         )
-        
+
         root.destroy()
-        
+
         if file_path:
             path = Path(file_path)
             _finalize_profile_save(state, path)
-            
+
     except Exception as e:
         log_message(state, "ERROR", f"Failed to open save dialog: {e}")
 
@@ -1452,19 +1659,19 @@ def _open_profile_native(state: UIState) -> None:
     try:
         root = Tk()
         root.withdraw()
-        root.attributes('-topmost', True)
-        
+        root.attributes("-topmost", True)
+
         file_path = filedialog.askopenfilename(
             title="Open Profile",
-            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")],
         )
-        
+
         root.destroy()
-        
+
         if file_path:
             path = Path(file_path)
             _load_profile_from_path(state, path)
-            
+
     except Exception as e:
         log_message(state, "ERROR", f"Failed to open file dialog: {e}")
 
@@ -1474,109 +1681,125 @@ def _finalize_profile_save(state: UIState, path: Path) -> None:
     temp_data = getattr(state, "temp_profile_data", {})
     nickname = temp_data.get("nickname")
     package_name = temp_data.get("package_name") or state.package_name
-    
+
     # Update state.output_file_name from UI if exists
     if dpg.does_item_exist("output_file_name"):
         state.output_file_name = dpg.get_value("output_file_name")
 
     profile = state.profile_manager.create_new_profile(
-        nickname=nickname,
-        package_name=package_name,
-        path=path
+        nickname=nickname, package_name=package_name, path=path
     )
     # Populate fields
     profile.output_file_name = state.output_file_name
     profile.input_path = str(state.input_path)
     profile.output_path = str(state.output_path)
     profile.use_prefix_only = state.use_prefix_only
-    profile.append_device_to_path = state.append_device_to_path
-    
+
     profile.move_logs_enabled = state.move_logs_enabled
     profile.move_csv_enabled = state.move_csv_enabled
     profile.generate_perf_report_enabled = state.generate_perf_report_enabled
     profile.generate_colored_logs_enabled = state.generate_colored_logs_enabled
 
     profile.save(path)
-    
+
     log_message(state, "SUCCESS", f"New profile '{nickname}' created at {path}")
 
     # Update UI
     state.profile_nickname = nickname or "None"
     state.package_name = package_name
     state.profile_path = path
-    
+
     if dpg.does_item_exist("profile_nickname_input"):
         dpg.set_value("profile_nickname_input", nickname or "None")
     if dpg.does_item_exist("profile_path_input"):
         dpg.set_value("profile_path_input", str(path))
     if dpg.does_item_exist("package_input"):
         dpg.set_value("package_input", package_name)
-    
+
     _update_profile_display_colors(state)
 
 
 def _load_profile_from_path(state: UIState, path: Path) -> None:
     try:
         from cerebrus.core.profile import Profile
+
         profile = Profile.load(path)
-        
+
         # Validate that required fields exist
-        if not hasattr(profile, 'nickname') or not hasattr(profile, 'package_name'):
+        if not hasattr(profile, "nickname") or not hasattr(profile, "package_name"):
             raise ValueError("Profile missing required fields")
-        
+
         state.profile_manager.current_profile = profile
         state.profile_manager.current_profile_path = path
         state.profile_manager.set_last_used_profile_path(path)
-        
+
         log_message(state, "SUCCESS", f"Profile loaded: {profile.nickname} from {path}")
 
         # Update UI
         state.profile_nickname = profile.nickname or "None"
         state.package_name = profile.package_name
         state.profile_path = path
-        
+
         # Load persisted fields
         state.output_file_name = profile.output_file_name
         state.input_path = Path(profile.input_path) if profile.input_path else Path("")
-        state.output_path = Path(profile.output_path) if profile.output_path else Path("")
+        state.output_path = (
+            Path(profile.output_path) if profile.output_path else Path("")
+        )
+        state.base_output_path = state.output_path  # Set base path to loaded path
         state.use_prefix_only = profile.use_prefix_only
-        state.append_device_to_path = profile.append_device_to_path
-        
+
         # Load bulk action states (with defaults if missing in old profiles)
-        state.move_logs_enabled = getattr(profile, 'move_logs_enabled', True)
-        state.move_csv_enabled = getattr(profile, 'move_csv_enabled', True)
-        state.generate_perf_report_enabled = getattr(profile, 'generate_perf_report_enabled', True)
-        state.generate_colored_logs_enabled = getattr(profile, 'generate_colored_logs_enabled', True)
-        
+        state.move_logs_enabled = getattr(profile, "move_logs_enabled", True)
+        state.move_csv_enabled = getattr(profile, "move_csv_enabled", True)
+        state.generate_perf_report_enabled = getattr(
+            profile, "generate_perf_report_enabled", True
+        )
+        state.generate_colored_logs_enabled = getattr(
+            profile, "generate_colored_logs_enabled", True
+        )
+
         # Update UI elements
         if dpg.does_item_exist("package_input"):
             dpg.set_value("package_input", profile.package_name)
-        
+
         if dpg.does_item_exist("profile_nickname_input"):
             dpg.set_value("profile_nickname_input", profile.nickname or "None")
-        
+
         if dpg.does_item_exist("profile_path_input"):
             dpg.set_value("profile_path_input", str(path))
-            
+
         if dpg.does_item_exist("output_file_name"):
             dpg.set_value("output_file_name", state.output_file_name)
-            
+
         if dpg.does_item_exist("input_path_label"):
             dpg.set_value("input_path_label", str(state.input_path))
-            
+
         if dpg.does_item_exist("output_path_label"):
             dpg.set_value("output_path_label", str(state.output_path))
-            
+
         if dpg.does_item_exist("use_prefix_only"):
             dpg.set_value("use_prefix_only", state.use_prefix_only)
-            
+
+        if dpg.does_item_exist("cb_move_logs"):
+            dpg.set_value("cb_move_logs", state.move_logs_enabled)
+        if dpg.does_item_exist("cb_move_csv"):
+            dpg.set_value("cb_move_csv", state.move_csv_enabled)
+        if dpg.does_item_exist("cb_gen_perf"):
+            dpg.set_value("cb_gen_perf", state.generate_perf_report_enabled)
+        if dpg.does_item_exist("cb_gen_logs"):
+            dpg.set_value("cb_gen_logs", state.generate_colored_logs_enabled)
 
         _update_profile_display_colors(state)
-        
+
     except (ValueError, KeyError, TypeError) as e:
         # Invalid profile schema
         filename = path.name if path else "Unknown"
-        log_message(state, "ERROR", f"{filename} is not a valid Profile. Please create a new profile or open a valid existing profile.")
+        log_message(
+            state,
+            "ERROR",
+            f"{filename} is not a valid Profile. Please create a new profile or open a valid existing profile.",
+        )
         print(f"Error loading profile: {e}")
     except Exception as e:
         # Other errors (file not found, JSON parse error, etc.)
@@ -1584,11 +1807,16 @@ def _load_profile_from_path(state: UIState, path: Path) -> None:
         log_message(state, "ERROR", f"Failed to load {filename}: {str(e)}")
         print(f"Error loading profile: {e}")
 
+
 def _update_profile_display_colors(state: UIState) -> None:
     """Update the display colors for profile labels based on whether it's default or loaded."""
     colors = get_theme_manager().get_profile_status_colors()
-    profile_color = colors["DEFAULT"] if not state.profile_manager.current_profile_path else colors["LOADED"]
-    
+    profile_color = (
+        colors["DEFAULT"]
+        if not state.profile_manager.current_profile_path
+        else colors["LOADED"]
+    )
+
     if dpg.does_item_exist("profile_nickname_input"):
         dpg.configure_item("profile_nickname_input", color=profile_color)
     if dpg.does_item_exist("profile_path_input"):
@@ -1620,7 +1848,7 @@ def setup_fonts() -> None:
 def _add_help_button(tooltip_key: str, state: UIState = None) -> None:
     """Add a small '?' help button with tooltip."""
     tooltip_text = TOOLTIPS.get(tooltip_key, "No help available.")
-    
+
     # Dynamic tooltip update for profiling
     if state and (tooltip_key == "start_profiling" or tooltip_key == "stop_profiling"):
         package_name = state.package_name or "Unknown Package"
@@ -1628,7 +1856,7 @@ def _add_help_button(tooltip_key: str, state: UIState = None) -> None:
 
     # Removed spacer to rely on natural alignment or table alignment
     button = dpg.add_button(label="?", width=20, height=20, callback=lambda: None)
-    
+
     with dpg.tooltip(button):
         # Wrap text to max width for readability
         dpg.add_text(tooltip_text, wrap=500)

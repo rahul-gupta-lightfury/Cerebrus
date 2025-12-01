@@ -1,27 +1,29 @@
-import markdown
 import os
 from pathlib import Path
 
+import markdown
+
+
 def generate_html_docs():
     """Convert user_guide.md to a standalone HTML file."""
-    
+
     project_root = Path(__file__).resolve().parent.parent
     md_file = project_root / "docs" / "user_guide.md"
     html_file = project_root / "cerebrus" / "resources" / "user_guide.html"
-    
+
     # Ensure resources directory exists
     html_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     if not md_file.exists():
         print(f"Error: {md_file} not found.")
         return
 
     with open(md_file, "r", encoding="utf-8") as f:
         text = f.read()
-        
+
     # Convert Markdown to HTML
-    html_content = markdown.markdown(text, extensions=['extra', 'toc'])
-    
+    html_content = markdown.markdown(text, extensions=["extra", "toc"])
+
     # Add CSS styling
     css = """
     <style>
@@ -36,7 +38,7 @@ def generate_html_docs():
         .container { background-color: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
     </style>
     """
-    
+
     full_html = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -53,11 +55,12 @@ def generate_html_docs():
     </body>
     </html>
     """
-    
+
     with open(html_file, "w", encoding="utf-8") as f:
         f.write(full_html)
-        
+
     print(f"Successfully generated {html_file}")
+
 
 if __name__ == "__main__":
     generate_html_docs()
