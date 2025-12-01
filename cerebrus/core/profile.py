@@ -16,7 +16,6 @@ class Profile:
     input_path: str = "C:/"
     output_path: str = "C:/"
     use_prefix_only: bool = False
-    append_device_to_path: bool = True
 
     move_logs_enabled: bool = True
     move_csv_enabled: bool = True
@@ -44,7 +43,7 @@ class Profile:
         # Filter to only use fields that exist in current Profile class (backward compatibility)
         valid_fields = {
             'nickname', 'package_name', 'output_file_name', 'input_path', 
-            'output_path', 'use_prefix_only', 'append_device_to_path',
+            'output_path', 'use_prefix_only',
             'move_logs_enabled', 'move_csv_enabled', 'generate_perf_report_enabled', 'generate_colored_logs_enabled'
         }
         filtered_data = {k: v for k, v in data.items() if k in valid_fields}

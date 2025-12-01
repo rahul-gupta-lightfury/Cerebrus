@@ -30,11 +30,11 @@ TOOLTIPS = {
     "use_prefix_only": "When enabled, the Output File Name will be used as a prefix with device-specific information appended. When disabled, it will be used as the exact filename.",
     "input_path": "The folder path where files will be moved from the device. CSV and Logs subfolders will be created here.",
     "output_path": "The main workspace folder. Files moved from devices will be saved here, and generated reports will be output here.",
-    "append_device": "When enabled, a subfolder with the device make and model will be automatically created in the output path.",
+
     "move_logs": "Moves log files from the selected device's Unreal Engine Saved/Logs folder to your PC.",
     "move_csv": "Moves CSV profiling data from the selected device's Unreal Engine Saved/Profiling/CSV folder to your PC.",
-    "generate_perf": "Processes CSV files in the Move Files Folder Path using PerfreportTool.exe and generates performance reports in the Output Folder Path. CSV files are deleted after successful processing.",
-    "generate_logs": "Converts text log files (.log, .txt) from the Move Files Folder Path to colored HTML format in the Output Folder Path. Source files are deleted after successful conversion.",
+    "generate_perf": "Generates performance reports from CSV files in the Output Path. Requires CSV files to be present.Source files are deleted after successful conversion.",
+    "generate_logs": "Generates colored HTML logs from text logs in the Output Path. Requires log files to be present.Source files are deleted after successful conversion.",
     "generate_both": "Runs both Perf Report generation and Colored Logs conversion in sequence.",
     "view_html_logs": "Opens the Output Folder Path and allows you to select and view generated HTML log files in your default web browser.",
     "package_name": "The Android package identifier for your application (e.g., com.company.appname). Must start with 'com.' and have at least 3 parts.",
@@ -290,6 +290,7 @@ def build_file_actions(state: UIState) -> None:
                     
                     with dpg.table_row():
                         dpg.add_checkbox(
+                            tag="cb_move_logs",
                             label="Move logs", 
                             default_value=state.move_logs_enabled,
                             callback=_handle_bulk_action_toggle,
@@ -299,6 +300,7 @@ def build_file_actions(state: UIState) -> None:
                     
                     with dpg.table_row():
                         dpg.add_checkbox(
+                            tag="cb_move_csv",
                             label="Move Profiling Data", 
                             default_value=state.move_csv_enabled,
                             callback=_handle_bulk_action_toggle,
@@ -314,6 +316,7 @@ def build_file_actions(state: UIState) -> None:
                     
                     with dpg.table_row():
                         dpg.add_checkbox(
+                            tag="cb_gen_perf",
                             label="Generate Perf Report Only", 
                             default_value=state.generate_perf_report_enabled,
                             callback=_handle_bulk_action_toggle,
@@ -323,6 +326,7 @@ def build_file_actions(state: UIState) -> None:
                     
                     with dpg.table_row():
                         dpg.add_checkbox(
+                            tag="cb_gen_logs",
                             label="Generate Colored Logs Only", 
                             default_value=state.generate_colored_logs_enabled,
                             callback=_handle_bulk_action_toggle,
@@ -491,6 +495,7 @@ def _handle_use_prefix_toggle(sender: int, app_data: bool, user_data: UIState) -
     _auto_save_profile(user_data)
 
 
+
 def _handle_bulk_action_toggle(sender: int, app_data: bool, user_data: tuple[UIState, str]) -> None:
     state, field_name = user_data
     setattr(state, field_name, app_data)
@@ -540,14 +545,26 @@ def _handle_generate_perf_report(state: UIState) -> None:
         log_message(state, "ERROR", f"PerfreportTool not found at: {tool_path}")
         return
 
-    # Input CSV directory: {Move Files Folder Path}\CSV
-    csv_dir = state.input_path / "CSV"
+    # Input CSV directory: {Output Path}\CSV
+    csv_dir = state.output_path / "CSV"
     if not csv_dir.exists():
         log_message(state, "ERROR", f"CSV directory not found: {csv_dir}")
         return
 
-    # Output directory: {Output Folder Path}
+    # Output directory: {Output Path}/{DeviceMakeModel}/ if device selected, else {Output Path}
     output_dir = state.output_path
+    if state.selected_device_serial:
+        # Find the selected device
+        selected_device = None
+        for device in state.devices:
+            if device.serial == state.selected_device_serial:
+                selected_device = device
+                break
+        
+        if selected_device:
+            device_folder = f"{selected_device.make}_{selected_device.model}"
+            output_dir = state.output_path / device_folder
+    
     if not output_dir.exists():
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -617,14 +634,26 @@ def _handle_generate_perf_report(state: UIState) -> None:
 
 def _handle_generate_colored_logs(state: UIState) -> None:
     """Convert text logs to colored HTML logs."""
-    # Input Logs directory: {Move Files Folder Path}\Logs
-    logs_dir = state.input_path / "Logs"
+    # Input Logs directory: {Output Path}\Logs
+    logs_dir = state.output_path / "Logs"
     if not logs_dir.exists():
         log_message(state, "ERROR", f"Logs directory not found: {logs_dir}")
         return
 
-    # Output directory: {Output Folder Path}
+    # Output directory: {Output Path}/{DeviceMakeModel}/ if device selected, else {Output Path}
     output_dir = state.output_path
+    if state.selected_device_serial:
+        # Find the selected device
+        selected_device = None
+        for device in state.devices:
+            if device.serial == state.selected_device_serial:
+                selected_device = device
+                break
+        
+        if selected_device:
+            device_folder = f"{selected_device.make}_{selected_device.model}"
+            output_dir = state.output_path / device_folder
+    
     if not output_dir.exists():
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -1007,27 +1036,6 @@ def _handle_device_select(sender: int, app_data: int, user_data: tuple[UIState, 
     if not dpg.does_item_exist("device_table"):
         return
     _select_device_row(row_index, state)
-    
-    # Update output path if append is enabled
-    if state.append_device_to_path:
-        # Ensure base path is set
-        if state.base_output_path is None:
-            state.base_output_path = state.output_path
-
-        # Find the device info
-        selected_device = None
-        for device in state.devices:
-            if device.serial == serial:
-                selected_device = device
-                break
-        
-        if selected_device:
-            device_folder = f"{selected_device.make}_{selected_device.model}"
-            new_path = state.base_output_path / device_folder
-            state.output_path = new_path
-            if dpg.does_item_exist("output_path_label"):
-                dpg.set_value("output_path_label", str(new_path))
-            log_message(state, "INFO", f"Output path updated for new device: {new_path}")
 
     # Update output file name to match device make and model
     if selected_device:
@@ -1094,25 +1102,7 @@ def _browse_folder_native(state: UIState, path_type: str) -> None:
                 log_message(state, "SUCCESS", f"Input path set to: {selected_path}")
                 _auto_save_profile(state)
             else:  # output
-                # Update base path
-                state.base_output_path = selected_path
-                
-                # Check if we need to append device info
-                if state.append_device_to_path and state.selected_device_serial:
-                    # Find the selected device
-                    selected_device = None
-                    for device in state.devices:
-                        if device.serial == state.selected_device_serial:
-                            selected_device = device
-                            break
-                    
-                    if selected_device:
-                        device_folder = f"{selected_device.make}_{selected_device.model}"
-                        state.output_path = selected_path / device_folder
-                    else:
-                        state.output_path = selected_path
-                else:
-                    state.output_path = selected_path
+                state.output_path = selected_path
                 
                 if dpg.does_item_exist("output_path_label"):
                     dpg.set_value("output_path_label", str(state.output_path))
@@ -1188,26 +1178,7 @@ def _handle_output_path_selected(sender: int, app_data: dict, user_data: UIState
     if selection is None:
         return
 
-    new_base_path = Path(selection)
-    user_data.base_output_path = new_base_path
-    
-    if user_data.append_device_to_path:
-        # Re-apply device suffix
-        selected_device = None
-        if user_data.selected_device_serial:
-            for device in user_data.devices:
-                if device.serial == user_data.selected_device_serial:
-                    selected_device = device
-                    break
-        
-        if selected_device:
-            device_folder = f"{selected_device.make}_{selected_device.model}"
-            user_data.output_path = new_base_path / device_folder
-        else:
-             # Fallback if no device selected
-             user_data.output_path = new_base_path
-    else:
-        user_data.output_path = new_base_path
+    user_data.output_path = Path(selection)
 
     # Sync input path with output path
     user_data.input_path = user_data.output_path
@@ -1360,15 +1331,8 @@ def _save_current_profile(state: UIState) -> None:
         
         profile.output_file_name = state.output_file_name
         profile.input_path = str(state.input_path)
-        
-        # Save base_output_path if available to avoid saving the appended device path
-        if state.base_output_path:
-            profile.output_path = str(state.base_output_path)
-        else:
-            profile.output_path = str(state.output_path)
-            
+        profile.output_path = str(state.output_path)
         profile.use_prefix_only = state.use_prefix_only
-        profile.append_device_to_path = state.append_device_to_path
         
         state.profile_manager.save_current_profile()
     else:
@@ -1388,15 +1352,8 @@ def _auto_save_profile(state: UIState) -> None:
             
         profile.output_file_name = state.output_file_name
         profile.input_path = str(state.input_path)
-        
-        # Save base_output_path if available to avoid saving the appended device path
-        if state.base_output_path:
-            profile.output_path = str(state.base_output_path)
-        else:
-            profile.output_path = str(state.output_path)
-            
+        profile.output_path = str(state.output_path)
         profile.use_prefix_only = state.use_prefix_only
-        profile.append_device_to_path = state.append_device_to_path
         
         # Save bulk action states
         profile.move_logs_enabled = state.move_logs_enabled
@@ -1489,7 +1446,6 @@ def _finalize_profile_save(state: UIState, path: Path) -> None:
     profile.input_path = str(state.input_path)
     profile.output_path = str(state.output_path)
     profile.use_prefix_only = state.use_prefix_only
-    profile.append_device_to_path = state.append_device_to_path
     
     profile.move_logs_enabled = state.move_logs_enabled
     profile.move_csv_enabled = state.move_csv_enabled
@@ -1540,7 +1496,6 @@ def _load_profile_from_path(state: UIState, path: Path) -> None:
         state.input_path = Path(profile.input_path) if profile.input_path else Path("")
         state.output_path = Path(profile.output_path) if profile.output_path else Path("")
         state.use_prefix_only = profile.use_prefix_only
-        state.append_device_to_path = profile.append_device_to_path
         
         # Load bulk action states (with defaults if missing in old profiles)
         state.move_logs_enabled = getattr(profile, 'move_logs_enabled', True)
@@ -1569,6 +1524,15 @@ def _load_profile_from_path(state: UIState, path: Path) -> None:
             
         if dpg.does_item_exist("use_prefix_only"):
             dpg.set_value("use_prefix_only", state.use_prefix_only)
+            
+        if dpg.does_item_exist("cb_move_logs"):
+            dpg.set_value("cb_move_logs", state.move_logs_enabled)
+        if dpg.does_item_exist("cb_move_csv"):
+            dpg.set_value("cb_move_csv", state.move_csv_enabled)
+        if dpg.does_item_exist("cb_gen_perf"):
+            dpg.set_value("cb_gen_perf", state.generate_perf_report_enabled)
+        if dpg.does_item_exist("cb_gen_logs"):
+            dpg.set_value("cb_gen_logs", state.generate_colored_logs_enabled)
             
 
         _update_profile_display_colors(state)
