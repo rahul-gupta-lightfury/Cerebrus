@@ -26,8 +26,8 @@ SELECTED_ROW_COLOR = (0, 119, 200, 153)  # Blue highlight with transparency
 
 # Tooltip definitions
 TOOLTIPS = {
-    "output_file_name": "The name to use for output files. This will be used as the filename or prefix depending on the 'Use as Prefix only' setting.",
-    "use_prefix_only": "When enabled, the Output File Name will be used as a prefix with device-specific information appended. When disabled, it will be used as the exact filename.",
+    "output_file_name": "The name to use for output files. If a file with the same name exists, a counter (_1, _2, etc.) will be added to keep both files. This will be used as the filename or prefix depending on the 'Use as Prefix only' setting.",
+    "use_prefix_only": "When enabled, the Output File Name will be used as a prefix with the original filename appended (e.g., 'prefix_filename.html'). When disabled, all generated files will use the exact Output File Name (with counters added if files exist).",
     "input_path": "The folder path where files will be moved from the device. CSV and Logs subfolders will be created here.",
     "output_path": "The main workspace folder. Files moved from devices will be saved here, and generated reports will be output here.",
 
@@ -534,6 +534,37 @@ def _handle_move_logs(state: UIState) -> None:
     _move_files_from_device(state, "Logs", "Logs")
 
 
+def _get_unique_output_path(base_path: Path, filename: str, extension: str) -> Path:
+    """
+    Generate a unique file path by appending a counter if the file already exists.
+    
+    Args:
+        base_path: Directory where the file will be saved
+        filename: Desired filename without extension
+        extension: File extension (with or without leading dot)
+    
+    Returns:
+        A unique Path object that doesn't conflict with existing files
+    """
+    # Ensure extension has a leading dot
+    if not extension.startswith('.'):
+        extension = f'.{extension}'
+    
+    output_path = base_path / f"{filename}{extension}"
+    
+    # If file doesn't exist, return it
+    if not output_path.exists():
+        return output_path
+    
+    # File exists, find a unique name by appending counter
+    counter = 1
+    while True:
+        output_path = base_path / f"{filename}_{counter}{extension}"
+        if not output_path.exists():
+            return output_path
+        counter += 1
+
+
 def _handle_generate_perf_report(state: UIState) -> None:
     """Run PerfreportTool on CSV files and delete them on success."""
     # Locate PerfreportTool.exe
@@ -570,19 +601,29 @@ def _handle_generate_perf_report(state: UIState) -> None:
     log_message(state, "INFO", f"Found {len(csv_files)} CSV files. Starting processing...")
 
     for csv_file in csv_files:
-        # Construct command
-        # Command: "{Tool}" -csv "{Input}" -reportType Default60fps -o "{Output}" -perfLog
+        # Determine output filename based on use_prefix_only setting
+        if state.use_prefix_only:
+            # Use output_file_name as prefix + CSV filename
+            if state.output_file_name:
+                output_filename = f"{state.output_file_name}_{csv_file.stem}"
+            else:
+                output_filename = csv_file.stem
+        else:
+            # Use output_file_name as exact filename (or CSV filename if not set)
+            output_filename = state.output_file_name if state.output_file_name else csv_file.stem
         
-        # Output path usually expects a filename prefix or full path. 
-        # User specified: "{Ouput Folder Path}\{CSV File Name}"
-        # We'll use the stem of the CSV file as the name.
-        output_file_path = output_dir / csv_file.stem
+        # Get unique path to avoid overwriting existing files
+        # PerfreportTool generates .html output
+        output_file_path = _get_unique_output_path(output_dir, output_filename, ".html")
+        
+        # Remove extension for the -o parameter (tool adds it automatically)
+        output_path_param = output_file_path.with_suffix('')
         
         cmd = [
             str(tool_path),
             "-csv", str(csv_file),
             "-reportType", "Default60fps",
-            "-o", str(output_file_path),
+            "-o", str(output_path_param),
             "-perfLog"
         ]
 
@@ -604,7 +645,7 @@ def _handle_generate_perf_report(state: UIState) -> None:
             )
 
             if result.returncode == 0:
-                log_message(state, "SUCCESS", f"Generated report for {csv_file.name}")
+                log_message(state, "SUCCESS", f"Generated report: {output_file_path.name}")
                 # Delete the CSV file
                 try:
                     csv_file.unlink()
@@ -649,8 +690,19 @@ def _handle_generate_colored_logs(state: UIState) -> None:
     log_message(state, "INFO", f"Found {len(log_files)} log files. Starting conversion...")
 
     for log_file in log_files:
-        # Output HTML file path
-        output_file_path = output_dir / f"{log_file.stem}.html"
+        # Determine output filename based on use_prefix_only setting
+        if state.use_prefix_only:
+            # Use output_file_name as prefix + log filename
+            if state.output_file_name:
+                output_filename = f"{state.output_file_name}_{log_file.stem}"
+            else:
+                output_filename = log_file.stem
+        else:
+            # Use output_file_name as exact filename (or log filename if not set)
+            output_filename = state.output_file_name if state.output_file_name else log_file.stem
+        
+        # Get unique path to avoid overwriting existing files
+        output_file_path = _get_unique_output_path(output_dir, output_filename, ".html")
         
         log_message(state, "INFO", f"Converting {log_file.name}...")
         
