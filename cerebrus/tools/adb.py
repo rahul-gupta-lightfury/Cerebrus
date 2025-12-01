@@ -52,6 +52,29 @@ class AdbClient:
         result = self._run(["-s", serial, "shell", *command])
         return result.stdout
 
+    def send_console_command(self, serial: str, command: str) -> None:
+        """Send a console command to the running Unreal Engine application."""
+        # Broadcast intent with 'cmd' extra which UE listens for
+        # Command: adb shell am broadcast -a android.intent.action.RUN -e cmd 'command'
+        self._run([
+            "-s", serial, 
+            "shell", 
+            "am", "broadcast", 
+            "-a", "android.intent.action.RUN", 
+            "-e", "cmd", f"'{command}'"
+        ])
+
+    def is_package_running(self, serial: str, package_name: str) -> bool:
+        """Check if the package is currently running (has a PID)."""
+        if not package_name:
+            return False
+        try:
+            # pidof returns the PID if running, or fails if not
+            result = self._run(["-s", serial, "shell", "pidof", package_name])
+            return bool(result.stdout.strip())
+        except AdbError:
+            return False
+
     def _run(self, args: List[str]) -> subprocess.CompletedProcess[str]:
         command = [self.executable, *args]
         completed = subprocess.run(

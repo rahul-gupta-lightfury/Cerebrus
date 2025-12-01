@@ -10,7 +10,7 @@
 - **Dialog Content**: Implemented `_show_about_dialog` to display:
   - **App Name**: Cerebrus
   - **Version**: Loaded dynamically from `_version.py`
-  - **Author**: Lightfury Games (Rahul Gupta)
+  - **Author**: Lightfury Games
   - **Repository**: https://github.com/rahulguptagamedev/Aegis-A-UE-GUI-Toolbelt-for-UE-CLI
   - **Description**: A UE GUI toolbelt for Unreal Engine command-line tools.
   - **License**: Apache 2.0 License

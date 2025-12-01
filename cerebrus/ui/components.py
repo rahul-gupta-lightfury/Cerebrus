@@ -12,6 +12,7 @@ import dearpygui.dearpygui as dpg
 
 from cerebrus.core.devices import DeviceInfo, collect_device_info
 from cerebrus.tools.adb import AdbClient, AdbError
+from cerebrus.tools.log_to_html import convert_log_to_html
 from cerebrus.ui.state import UIState
 from cerebrus.ui.themes import get_theme_manager
 from cerebrus._version import __version__
@@ -39,6 +40,9 @@ TOOLTIPS = {
     "package_name": "The Android package identifier for your application (e.g., com.company.appname). Must start with 'com.' and have at least 3 parts.",
     "device_table": "Lists all connected Android devices. Select a device to perform operations. Only devices with the package installed can be selected.",
     "list_devices": "Scans for connected Android devices via ADB and checks if the specified package is installed on each device.",
+    "start_profiling": "Starts profiling data on selected device if Package is running actively in foreground.",
+    "stop_profiling": "Stops profiling data on selected device if Package is running actively in foreground.",
+    "generate_actions": "Executes all selected bulk actions (Move Logs, Move Profiling Data, Generate Reports) in sequence.",
 }
 
 
@@ -152,7 +156,11 @@ def _show_about_dialog(state: UIState) -> None:
         dpg.add_text(f"Version: {__version__}")
         
         # Author
-        dpg.add_text("Author: Lightfury Games (Rahul Gupta)")
+        dpg.add_text("Author: Lightfury Games")
+        
+        # Copyright
+        dpg.add_text("Copyright © 2025 LeagueX Gaming Private Limited (LightFury Games).")
+        dpg.add_text("All rights reserved.")
         
         # Repository
         dpg.add_text("Repository:")
@@ -165,7 +173,7 @@ def _show_about_dialog(state: UIState) -> None:
         # License
         with dpg.group(horizontal=True):
             dpg.add_text("Licensed under the")
-            dpg.add_text("Apache 2.0 License", color=(100, 150, 255))
+            dpg.add_text("BSD 3-Clause License", color=(100, 150, 255))
             dpg.add_text(".")
         
         dpg.add_spacer(height=20)
@@ -192,7 +200,9 @@ def build_profile_summary(state: UIState) -> None:
         )
         _add_help_button("package_name")
         dpg.add_text("Profile Path:")
-        dpg.add_text(tag="profile_path_input", default_value=str(state.profile_path), color=profile_color)
+        with dpg.group(horizontal=True, horizontal_spacing=4):
+            dpg.add_text(tag="profile_path_input", default_value=str(state.profile_path), color=profile_color)
+            dpg.add_button(label="Open", callback=lambda: _open_profile_folder(state))
 
 
 def build_device_controls(state: UIState) -> None:
@@ -206,6 +216,14 @@ def build_device_controls(state: UIState) -> None:
 
     with dpg.child_window(border=False, autosize_x=True, height=220, tag="device_table_container"):
         _render_device_table(state)
+
+    dpg.add_separator()
+    with dpg.group(horizontal=True, horizontal_spacing=8):
+        dpg.add_text("Remote Profiling", color=(120, 180, 255))
+        dpg.add_button(label="Start Profiling", width=120, callback=lambda: _handle_start_profiling(state))
+        _add_help_button("start_profiling", state)
+        dpg.add_button(label="Stop Profiling", width=120, callback=lambda: _handle_stop_profiling(state))
+        _add_help_button("stop_profiling", state)
 
 
 def build_file_actions(state: UIState) -> None:
@@ -271,11 +289,21 @@ def build_file_actions(state: UIState) -> None:
                     dpg.add_table_column(width_fixed=True, init_width_or_weight=30)
                     
                     with dpg.table_row():
-                        dpg.add_button(label="Move logs", width=200, callback=lambda: _handle_move_logs(state))
+                        dpg.add_checkbox(
+                            label="Move logs", 
+                            default_value=state.move_logs_enabled,
+                            callback=_handle_bulk_action_toggle,
+                            user_data=(state, "move_logs_enabled")
+                        )
                         _add_help_button("move_logs")
                     
                     with dpg.table_row():
-                        dpg.add_button(label="Move CSV data", width=200, callback=lambda: _handle_move_csv(state))
+                        dpg.add_checkbox(
+                            label="Move Profiling Data", 
+                            default_value=state.move_csv_enabled,
+                            callback=_handle_bulk_action_toggle,
+                            user_data=(state, "move_csv_enabled")
+                        )
                         _add_help_button("move_csv")
 
             with dpg.child_window(border=True, autosize_y=True, width=460):
@@ -285,16 +313,26 @@ def build_file_actions(state: UIState) -> None:
                     dpg.add_table_column(width_fixed=True, init_width_or_weight=30)
                     
                     with dpg.table_row():
-                        dpg.add_button(label="Generate Perf Report Only", width=300, callback=lambda: _handle_generate_perf_report(state))
+                        dpg.add_checkbox(
+                            label="Generate Perf Report Only", 
+                            default_value=state.generate_perf_report_enabled,
+                            callback=_handle_bulk_action_toggle,
+                            user_data=(state, "generate_perf_report_enabled")
+                        )
                         _add_help_button("generate_perf")
                     
                     with dpg.table_row():
-                        dpg.add_button(label="Generate Colored Logs Only", width=300, callback=lambda: _handle_generate_colored_logs(state))
+                        dpg.add_checkbox(
+                            label="Generate Colored Logs Only", 
+                            default_value=state.generate_colored_logs_enabled,
+                            callback=_handle_bulk_action_toggle,
+                            user_data=(state, "generate_colored_logs_enabled")
+                        )
                         _add_help_button("generate_logs")
                     
                     with dpg.table_row():
-                        dpg.add_button(label="Generate Perf Report + Colored Logs", width=300)
-                        _add_help_button("generate_both")
+                        dpg.add_button(label="Generate", width=300, callback=lambda: _handle_generate_actions(state))
+                        _add_help_button("generate_actions")
                     
                     with dpg.table_row():
                         dpg.add_button(label="View HTML Logs", width=300, callback=lambda: _handle_view_html_logs(state))
@@ -323,7 +361,60 @@ def _populate_devices(state: UIState) -> None:
     package_value = dpg.get_value("package_input") if dpg.does_item_exist("package_input") else ""
     state.package_name = package_value or ""
     state.devices = collect_device_info(state.package_name)
+    state.devices = collect_device_info(state.package_name)
     _refresh_device_table(state)
+
+
+def _handle_start_profiling(state: UIState) -> None:
+    """Send 'CsvProfile Start' command to the selected device."""
+    if not state.selected_device_serial:
+        log_message(state, "ERROR", "No device selected.")
+        return
+
+    if not state.package_name:
+        log_message(state, "ERROR", "Package Name not set.")
+        return
+
+    client = AdbClient()
+    
+    # Check if running - Fail if not
+    if not client.is_package_running(state.selected_device_serial, state.package_name):
+        log_message(state, "ERROR", f"Package {state.package_name} is not running on the device.")
+        log_message(state, "ERROR", "Please launch the application on the device before starting profiling.")
+        return
+
+    try:
+        log_message(state, "INFO", "Sending 'CsvProfile Start'...")
+        client.send_console_command(state.selected_device_serial, "CsvProfile Start")
+        log_message(state, "SUCCESS", "Sent start profiling command.")
+    except Exception as e:
+        log_message(state, "ERROR", f"Failed to send command: {e}")
+
+
+def _handle_stop_profiling(state: UIState) -> None:
+    """Send 'CsvProfile Stop' command to the selected device."""
+    if not state.selected_device_serial:
+        log_message(state, "ERROR", "No device selected.")
+        return
+        
+    if not state.package_name:
+        log_message(state, "ERROR", "Package Name not set.")
+        return
+
+    client = AdbClient()
+    
+    # Check if running - Fail if not
+    if not client.is_package_running(state.selected_device_serial, state.package_name):
+        log_message(state, "ERROR", f"Package {state.package_name} is not running on the device.")
+        log_message(state, "ERROR", "Cannot stop profiling if the application is not running.")
+        return
+
+    try:
+        log_message(state, "INFO", "Sending 'CsvProfile Stop'...")
+        client.send_console_command(state.selected_device_serial, "CsvProfile Stop")
+        log_message(state, "SUCCESS", "Sent stop profiling command.")
+    except Exception as e:
+        log_message(state, "ERROR", f"Failed to send command: {e}")
 
 
 def _handle_log_filter(sender: int, app_data: str, user_data: UIState) -> None:
@@ -339,6 +430,35 @@ def _handle_output_file_name_change(sender: int, app_data: str, user_data: UISta
 def _handle_use_prefix_toggle(sender: int, app_data: bool, user_data: UIState) -> None:
     user_data.use_prefix_only = bool(app_data)
     _auto_save_profile(user_data)
+
+
+def _handle_bulk_action_toggle(sender: int, app_data: bool, user_data: tuple[UIState, str]) -> None:
+    state, field_name = user_data
+    setattr(state, field_name, app_data)
+    _auto_save_profile(state)
+
+
+def _handle_generate_actions(state: UIState) -> None:
+    """Execute selected bulk actions."""
+    if state.move_logs_enabled:
+        _handle_move_logs(state)
+    if state.move_csv_enabled:
+        _handle_move_csv(state)
+    if state.generate_perf_report_enabled:
+        _handle_generate_perf_report(state)
+    if state.generate_colored_logs_enabled:
+        _handle_generate_colored_logs(state)
+
+
+def _open_profile_folder(state: UIState) -> None:
+    """Open the folder containing the current profile."""
+    if state.profile_path and state.profile_path.exists():
+        if state.profile_path.is_file():
+             _open_folder_in_explorer(state.profile_path.parent)
+        else:
+             _open_folder_in_explorer(state.profile_path)
+    else:
+        log_message(state, "WARNING", "Profile path does not exist.")
 
 
 
@@ -438,14 +558,6 @@ def _handle_generate_perf_report(state: UIState) -> None:
 
 def _handle_generate_colored_logs(state: UIState) -> None:
     """Convert text logs to colored HTML logs."""
-    # Locate log_to_html.py
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    tool_path = repo_root / "cerebrus" / "tools" / "log_to_html.py"
-
-    if not tool_path.exists():
-        log_message(state, "ERROR", f"Log conversion tool not found at: {tool_path}")
-        return
-
     # Input Logs directory: {Move Files Folder Path}\Logs
     logs_dir = state.input_path / "Logs"
     if not logs_dir.exists():
@@ -472,41 +584,19 @@ def _handle_generate_colored_logs(state: UIState) -> None:
         # Output HTML file path
         output_file_path = output_dir / f"{log_file.stem}.html"
         
-        cmd = [
-            sys.executable,
-            str(tool_path),
-            "-i", str(log_file),
-            "-o", str(output_file_path),
-        ]
-
         log_message(state, "INFO", f"Converting {log_file.name}...")
         
         try:
-            # Run command
-            startupinfo = None
-            if hasattr(subprocess, 'STARTUPINFO'):
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                startupinfo=startupinfo
-            )
-
-            if result.returncode == 0:
-                log_message(state, "SUCCESS", f"Created {output_file_path.name}")
-                # Delete the source file
-                try:
-                    log_file.unlink()
-                    log_message(state, "INFO", f"Deleted {log_file.name}")
-                except Exception as e:
-                    log_message(state, "WARNING", f"Failed to delete {log_file.name}: {e}")
-            else:
-                log_message(state, "ERROR", f"Failed to convert {log_file.name}")
-                log_message(state, "ERROR", f"Tool Output: {result.stdout}")
-                log_message(state, "ERROR", f"Tool Error: {result.stderr}")
+            # Run conversion directly
+            convert_log_to_html(log_file, output_file_path)
+            log_message(state, "SUCCESS", f"Created {output_file_path.name}")
+            
+            # Delete the source file
+            try:
+                log_file.unlink()
+                log_message(state, "INFO", f"Deleted {log_file.name}")
+            except Exception as e:
+                log_message(state, "WARNING", f"Failed to delete {log_file.name}: {e}")
 
         except Exception as e:
             log_message(state, "ERROR", f"Exception while converting {log_file.name}: {e}")
@@ -694,6 +784,10 @@ def _render_log_entries(state: UIState) -> None:
         theme = _get_log_theme(level.upper(), color)
         dpg.bind_item_theme(item, theme)
 
+    # Auto-scroll to bottom
+    # Using a large value to ensure it scrolls to the absolute bottom even if layout isn't fully updated
+    dpg.set_y_scroll("log_container", 999999.0)
+
 
 _LOG_THEMES: dict[str, int] = {}
 
@@ -824,6 +918,7 @@ def _render_device_row(row_index: int, device: DeviceInfo, state: UIState) -> No
                     span_columns=False,
                     callback=_handle_device_select,
                     user_data=(state, row_index, device.serial),
+                    enabled=device.package_found,  # Disable if package not found
                 )
             row_tags.append(cell_tag)
 
@@ -1225,7 +1320,7 @@ def _save_current_profile(state: UIState) -> None:
 
 def _auto_save_profile(state: UIState) -> None:
     """Automatically save specific fields to the current profile."""
-    if state.profile_manager.current_profile and state.profile_manager.current_profile_path:
+    if state.profile_manager.current_profile:
         profile = state.profile_manager.current_profile
         
         # Update fields
@@ -1244,7 +1339,25 @@ def _auto_save_profile(state: UIState) -> None:
         profile.use_prefix_only = state.use_prefix_only
         profile.append_device_to_path = state.append_device_to_path
         
-        state.profile_manager.save_current_profile()
+        # Save bulk action states
+        profile.move_logs_enabled = state.move_logs_enabled
+        profile.move_csv_enabled = state.move_csv_enabled
+        profile.generate_perf_report_enabled = state.generate_perf_report_enabled
+        profile.generate_colored_logs_enabled = state.generate_colored_logs_enabled
+        
+        if state.profile_manager.current_profile_path:
+            state.profile_manager.save_current_profile()
+        else:
+            # Shadow save for default profile (allow caching for default)
+            try:
+                from cerebrus.core.profile import CONFIG_DIR
+                shadow_path = CONFIG_DIR / "default_profile.json"
+                if not CONFIG_DIR.exists():
+                    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+                profile.save(shadow_path)
+                # We do NOT update current_profile_path to keep it as "Default" in UI
+            except Exception as e:
+                print(f"Failed to shadow save default profile: {e}")
 
 
 
@@ -1318,6 +1431,11 @@ def _finalize_profile_save(state: UIState, path: Path) -> None:
     profile.output_path = str(state.output_path)
     profile.use_prefix_only = state.use_prefix_only
     profile.append_device_to_path = state.append_device_to_path
+    
+    profile.move_logs_enabled = state.move_logs_enabled
+    profile.move_csv_enabled = state.move_csv_enabled
+    profile.generate_perf_report_enabled = state.generate_perf_report_enabled
+    profile.generate_colored_logs_enabled = state.generate_colored_logs_enabled
 
     profile.save(path)
     
@@ -1364,6 +1482,12 @@ def _load_profile_from_path(state: UIState, path: Path) -> None:
         state.output_path = Path(profile.output_path) if profile.output_path else Path("")
         state.use_prefix_only = profile.use_prefix_only
         state.append_device_to_path = profile.append_device_to_path
+        
+        # Load bulk action states (with defaults if missing in old profiles)
+        state.move_logs_enabled = getattr(profile, 'move_logs_enabled', True)
+        state.move_csv_enabled = getattr(profile, 'move_csv_enabled', True)
+        state.generate_perf_report_enabled = getattr(profile, 'generate_perf_report_enabled', True)
+        state.generate_colored_logs_enabled = getattr(profile, 'generate_colored_logs_enabled', True)
         
         # Update UI elements
         if dpg.does_item_exist("package_input"):
@@ -1434,10 +1558,15 @@ def setup_fonts() -> None:
             print("Segoe UI font not found, using default.")
 
 
-def _add_help_button(tooltip_key: str) -> None:
+def _add_help_button(tooltip_key: str, state: UIState = None) -> None:
     """Add a small '?' help button with tooltip."""
     tooltip_text = TOOLTIPS.get(tooltip_key, "No help available.")
     
+    # Dynamic tooltip update for profiling
+    if state and (tooltip_key == "start_profiling" or tooltip_key == "stop_profiling"):
+        package_name = state.package_name or "Unknown Package"
+        tooltip_text = tooltip_text.replace("Package", f"Package ({package_name})")
+
     # Removed spacer to rely on natural alignment or table alignment
     button = dpg.add_button(label="?", width=20, height=20, callback=lambda: None)
     

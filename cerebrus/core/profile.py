@@ -18,6 +18,11 @@ class Profile:
     use_prefix_only: bool = False
     append_device_to_path: bool = True
 
+    move_logs_enabled: bool = True
+    move_csv_enabled: bool = True
+    generate_perf_report_enabled: bool = True
+    generate_colored_logs_enabled: bool = True
+
     def validate(self) -> list[str]:
         errors = []
         if not self.package_name:
@@ -39,7 +44,8 @@ class Profile:
         # Filter to only use fields that exist in current Profile class (backward compatibility)
         valid_fields = {
             'nickname', 'package_name', 'output_file_name', 'input_path', 
-            'output_path', 'use_prefix_only', 'append_device_to_path'
+            'output_path', 'use_prefix_only', 'append_device_to_path',
+            'move_logs_enabled', 'move_csv_enabled', 'generate_perf_report_enabled', 'generate_colored_logs_enabled'
         }
         filtered_data = {k: v for k, v in data.items() if k in valid_fields}
         return cls(**filtered_data)
@@ -110,6 +116,17 @@ class ProfileManager:
                 base_path = Path(__file__).resolve().parent.parent
                 default_path = base_path / "resources" / "Titan.json"
             
+            # Check for shadow default profile first (user cached settings for default)
+            shadow_path = CONFIG_DIR / "default_profile.json"
+            if shadow_path.exists():
+                try:
+                    profile = Profile.load(shadow_path)
+                    self.current_profile = profile
+                    self.current_profile_path = None # Treat as default
+                    return profile, None
+                except Exception:
+                    pass # Fallback to bundled
+
             if default_path.exists():
                 profile = Profile.load(default_path)
                 self.current_profile = profile

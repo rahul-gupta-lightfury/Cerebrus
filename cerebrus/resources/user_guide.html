@@ -78,6 +78,7 @@
             <li><a href="#getting-started">Getting Started</a></li>
             <li><a href="#profile-management">Profile Management</a></li>
             <li><a href="#device-management">Device Management</a></li>
+            <li><a href="#remote-profiling">Remote Profiling</a></li>
             <li><a href="#file-actions">File Actions</a></li>
             <li><a href="#report-generation">Report Generation</a></li>
             <li><a href="#settings">Settings</a></li>
@@ -103,6 +104,14 @@
             - <strong>Selection</strong>: Click on a device row to select it for operations.
             - <strong>Status</strong>: The table shows the device model, serial number, Android version, and if the
             target package is installed.</p>
+        <h2 id="remote-profiling">Remote Profiling</h2>
+        <p>Control Unreal Engine profiling directly from Cerebrus.
+            - <strong>Start Profiling</strong>: Starts profiling data on selected device if Package is running actively
+            in foreground.
+            - <strong>Stop Profiling</strong>: Stops profiling data on selected device if Package is running actively in
+            foreground.
+            - <strong>Note</strong>: The application must be running on the selected device for these commands to work.
+        </p>
         <h2 id="file-actions">File Actions</h2>
         <p>Manage files between your PC and the connected Android device.</p>
         <h3 id="configuration">Configuration</h3>
@@ -116,7 +125,7 @@
         <h3 id="bulk-actions-phone-to-pc">Bulk Actions (Phone to PC)</h3>
         <ul>
             <li><strong>Move Logs</strong>: Copies logs from <code>Saved/Logs</code> on the device to your PC.</li>
-            <li><strong>Move CSV Data</strong>: Copies profiling data from <code>Saved/Profiling/CSV</code> on the
+            <li><strong>Move Profiling Data</strong>: Copies profiling data from <code>Saved/Profiling/CSV</code> on the
                 device to your PC.</li>
         </ul>
         <h2 id="report-generation">Report Generation</h2>
@@ -136,6 +145,9 @@
         <h2 id="troubleshooting">Troubleshooting</h2>
         <ul>
             <li><strong>No Devices Found</strong>: Ensure USB debugging is enabled and ADB is running.</li>
+            <li><strong>List Devices Not Working</strong>: If the "List Devices" button does not work automatically,
+                open a command prompt and run the command <code>adb devices</code> manually once to initialize the
+                daemon.</li>
             <li><strong>Tool Not Found</strong>: Verify that <code>PerfreportTool.exe</code> path is correctly
                 configured in your environment or settings.</li>
         </ul>

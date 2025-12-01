@@ -28,3 +28,9 @@ class UIState:
     profile_manager: ProfileManager = field(default_factory=ProfileManager)
     append_device_to_path: bool = True
     base_output_path: Path | None = None  # Store the original path without device appended
+    
+    # Bulk Action States
+    move_logs_enabled: bool = True
+    move_csv_enabled: bool = True
+    generate_perf_report_enabled: bool = True
+    generate_colored_logs_enabled: bool = True
