@@ -1,8 +1,10 @@
 """Tests for output file naming and uniqueness logic."""
-import pytest
-from pathlib import Path
-import tempfile
+
 import shutil
+import tempfile
+from pathlib import Path
+
+import pytest
 
 from cerebrus.ui.components import _get_unique_output_path
 
@@ -31,7 +33,7 @@ class TestUniqueOutputPath:
         # Create an existing file
         existing_file = self.test_dir / "test.html"
         existing_file.touch()
-        
+
         result = _get_unique_output_path(self.test_dir, "test", ".html")
         expected = self.test_dir / "test_1.html"
         assert result == expected
@@ -42,7 +44,7 @@ class TestUniqueOutputPath:
         (self.test_dir / "test.html").touch()
         (self.test_dir / "test_1.html").touch()
         (self.test_dir / "test_2.html").touch()
-        
+
         result = _get_unique_output_path(self.test_dir, "test", ".html")
         expected = self.test_dir / "test_3.html"
         assert result == expected
@@ -64,7 +66,7 @@ class TestUniqueOutputPath:
         result_html = _get_unique_output_path(self.test_dir, "report", ".html")
         result_csv = _get_unique_output_path(self.test_dir, "data", ".csv")
         result_txt = _get_unique_output_path(self.test_dir, "log", "txt")
-        
+
         assert result_html == self.test_dir / "report.html"
         assert result_csv == self.test_dir / "data.csv"
         assert result_txt == self.test_dir / "log.txt"
@@ -74,7 +76,7 @@ class TestUniqueOutputPath:
         # Create files with a gap
         (self.test_dir / "test.html").touch()
         (self.test_dir / "test_3.html").touch()
-        
+
         # Should fill the gap and use test_1.html
         result = _get_unique_output_path(self.test_dir, "test", ".html")
         expected = self.test_dir / "test_1.html"
@@ -83,9 +85,7 @@ class TestUniqueOutputPath:
     def test_filename_with_special_characters(self):
         """Test filenames with special characters."""
         result = _get_unique_output_path(
-            self.test_dir, 
-            "test_report_2024-12-01", 
-            ".html"
+            self.test_dir, "test_report_2024-12-01", ".html"
         )
         expected = self.test_dir / "test_report_2024-12-01.html"
         assert result == expected
@@ -107,12 +107,12 @@ class TestOutputFileNameLogic:
         output_file_name = "report"
         csv_stem = "game_data"
         use_prefix_only = True
-        
+
         if use_prefix_only and output_file_name:
             result = f"{output_file_name}_{csv_stem}"
         else:
             result = output_file_name if output_file_name else csv_stem
-        
+
         assert result == "report_game_data"
 
     def test_exact_filename_mode_naming(self):
@@ -121,12 +121,12 @@ class TestOutputFileNameLogic:
         output_file_name = "final_report"
         csv_stem = "game_data"
         use_prefix_only = False
-        
+
         if use_prefix_only and output_file_name:
             result = f"{output_file_name}_{csv_stem}"
         else:
             result = output_file_name if output_file_name else csv_stem
-        
+
         assert result == "final_report"
 
     def test_empty_output_name_prefix_mode(self):
@@ -134,12 +134,12 @@ class TestOutputFileNameLogic:
         output_file_name = ""
         csv_stem = "game_data"
         use_prefix_only = True
-        
+
         if use_prefix_only and output_file_name:
             result = f"{output_file_name}_{csv_stem}"
         else:
             result = output_file_name if output_file_name else csv_stem
-        
+
         # Should fall back to csv_stem
         assert result == "game_data"
 
@@ -148,12 +148,12 @@ class TestOutputFileNameLogic:
         output_file_name = ""
         csv_stem = "game_data"
         use_prefix_only = False
-        
+
         if use_prefix_only and output_file_name:
             result = f"{output_file_name}_{csv_stem}"
         else:
             result = output_file_name if output_file_name else csv_stem
-        
+
         # Should fall back to csv_stem
         assert result == "game_data"
 

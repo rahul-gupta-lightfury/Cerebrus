@@ -1,4 +1,5 @@
 """Module entry point for launching the Cerebrus UI."""
+
 from cerebrus.ui import CerebrusApp
 
 

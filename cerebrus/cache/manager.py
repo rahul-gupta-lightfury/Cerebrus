@@ -1,4 +1,5 @@
 """Cache directory management."""
+
 from __future__ import annotations
 
 import os
@@ -23,7 +24,9 @@ class CacheManager:
 
     def _enforce_max_entries(self, cache_dir: Path) -> None:
         entries: Iterable[Path] = cache_dir.iterdir()
-        sorted_entries = sorted(entries, key=lambda path: path.stat().st_mtime, reverse=True)
+        sorted_entries = sorted(
+            entries, key=lambda path: path.stat().st_mtime, reverse=True
+        )
 
         if len(sorted_entries) <= self.config.max_entries:
             return

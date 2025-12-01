@@ -1,4 +1,5 @@
 """Device collection helpers built on top of the adb tooling."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

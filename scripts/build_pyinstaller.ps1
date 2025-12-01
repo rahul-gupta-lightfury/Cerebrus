@@ -127,7 +127,7 @@ try {
     Write-Section "Build Complete!"
     Write-Host "`nArtifacts created:" -ForegroundColor Cyan
     Get-ChildItem $OutputDir -Filter "Cerebrus-$version*" | ForEach-Object {
-        Write-Host "  ✓ $($_.Name) ($([Math]::Round($_.Length / 1MB, 2)) MB)" -ForegroundColor Green
+        Write-Host "  [+] $($_.Name) ($([Math]::Round($_.Length / 1MB, 2)) MB)" -ForegroundColor Green
     }
     
 }

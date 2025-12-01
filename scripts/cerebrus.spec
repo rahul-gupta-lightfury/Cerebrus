@@ -4,8 +4,13 @@
 from pathlib import Path
 import sys
 
-# Get the root directory (parent of scripts/)
-root_dir = Path(SPECPATH).parent
+# Get the root directory
+spec_path = Path(SPECPATH).resolve()
+root_dir = spec_path.parent
+if not (root_dir / "cerebrus").exists():
+    root_dir = root_dir.parent
+
+print(f"DEBUG: Resolved root_dir={root_dir}")
 cerebrus_dir = root_dir / "cerebrus"
 binaries_dir = root_dir / "Binaries"
 resources_dir = cerebrus_dir / "resources"
@@ -67,7 +72,7 @@ if version_file.exists():
             break
 
 # Version info for Windows executable
-version_info = (
+version_info_content = (
     f'VSVersionInfo(\n'
     f'  ffi=FixedFileInfo(\n'
     f'    filevers=({version.replace(".", ", ")}, 0),\n'
@@ -98,6 +103,11 @@ version_info = (
     f')'
 )
 
+# Write version info to a temporary file
+version_file = root_dir / 'build' / 'version_info.txt'
+version_file.parent.mkdir(parents=True, exist_ok=True)
+version_file.write_text(version_info_content, encoding='utf-8')
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -115,7 +125,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=str(resources_dir / 'icon256x256.ico') if (resources_dir / 'icon256x256.ico').exists() else None,
-    version=version_info,
+    version=str(version_file),
 )
 
 coll = COLLECT(

@@ -1,4 +1,5 @@
 """Data models for Cerebrus configuration."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -15,7 +16,9 @@ class CacheConfig:
     max_entries: int = 50
 
     @classmethod
-    def from_mapping(cls, data: Mapping[str, object], default_directory: Path) -> "CacheConfig":
+    def from_mapping(
+        cls, data: Mapping[str, object], default_directory: Path
+    ) -> "CacheConfig":
         directory_value = Path(data.get("directory", default_directory))
         max_entries_value = int(data.get("max_entries", cls.max_entries))
         return cls(directory=directory_value, max_entries=max_entries_value)
@@ -54,7 +57,9 @@ class AppConfig:
     version: int = 1
     tool_paths: Dict[str, str] = field(default_factory=dict)
     profiles: List[ProfileConfig] = field(default_factory=list)
-    cache: CacheConfig = field(default_factory=lambda: CacheConfig(directory=Path(".cerebrus-cache")))
+    cache: CacheConfig = field(
+        default_factory=lambda: CacheConfig(directory=Path(".cerebrus-cache"))
+    )
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, object]) -> "AppConfig":
@@ -62,11 +67,15 @@ class AppConfig:
         tool_paths_value = dict(data.get("tool_paths", {}))
 
         profile_entries = data.get("profiles", [])
-        profiles_value = [ProfileConfig.from_mapping(entry) for entry in _as_iterable(profile_entries)]
+        profiles_value = [
+            ProfileConfig.from_mapping(entry) for entry in _as_iterable(profile_entries)
+        ]
 
         cache_value = data.get("cache", {})
         cache_config = (
-            CacheConfig.from_mapping(cache_value, default_directory=Path(".cerebrus-cache"))
+            CacheConfig.from_mapping(
+                cache_value, default_directory=Path(".cerebrus-cache")
+            )
             if isinstance(cache_value, Mapping)
             else CacheConfig(directory=Path(".cerebrus-cache"))
         )
@@ -74,7 +83,12 @@ class AppConfig:
         if not profiles_value:
             profiles_value.append(ProfileConfig(name="default", report_type="summary"))
 
-        return cls(version=version_value, tool_paths=tool_paths_value, profiles=profiles_value, cache=cache_config)
+        return cls(
+            version=version_value,
+            tool_paths=tool_paths_value,
+            profiles=profiles_value,
+            cache=cache_config,
+        )
 
 
 def _as_iterable(value: object) -> Iterable[Mapping[str, object]]:

@@ -1,4 +1,5 @@
 """Utility to assemble a distributable Windows installer bundle."""
+
 from __future__ import annotations
 
 import argparse
@@ -189,6 +190,7 @@ powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%install.ps1" %*
 """
     )
 
+
 def _write_manifest(staging_root: Path, items: Iterable[str | Path]) -> None:
     manifest_path = staging_root / "INSTALLER_CONTENTS.txt"
     entries = []
@@ -209,7 +211,9 @@ def _write_manifest(staging_root: Path, items: Iterable[str | Path]) -> None:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build the Cerebrus Windows installer bundle.")
+    parser = argparse.ArgumentParser(
+        description="Build the Cerebrus Windows installer bundle."
+    )
     parser.add_argument(
         "--output",
         type=Path,

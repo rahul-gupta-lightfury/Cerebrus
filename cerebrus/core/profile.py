@@ -1,12 +1,13 @@
 import json
 import os
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
 # Global config path
 CONFIG_DIR = Path.home() / ".cerebrus"
 CONFIG_FILE = CONFIG_DIR / "config.json"
+
 
 @dataclass
 class Profile:
@@ -42,12 +43,20 @@ class Profile:
             data = json.load(f)
         # Filter to only use fields that exist in current Profile class (backward compatibility)
         valid_fields = {
-            'nickname', 'package_name', 'output_file_name', 'input_path', 
-            'output_path', 'use_prefix_only',
-            'move_logs_enabled', 'move_csv_enabled', 'generate_perf_report_enabled', 'generate_colored_logs_enabled'
+            "nickname",
+            "package_name",
+            "output_file_name",
+            "input_path",
+            "output_path",
+            "use_prefix_only",
+            "move_logs_enabled",
+            "move_csv_enabled",
+            "generate_perf_report_enabled",
+            "generate_colored_logs_enabled",
         }
         filtered_data = {k: v for k, v in data.items() if k in valid_fields}
         return cls(**filtered_data)
+
 
 class ProfileManager:
     def __init__(self):
@@ -82,12 +91,12 @@ class ProfileManager:
                     data = json.load(f)
             except Exception:
                 data = {}
-        
+
         if path:
             data["last_used_profile"] = str(path.absolute())
         else:
             data.pop("last_used_profile", None)
-            
+
         with open(CONFIG_FILE, "w") as f:
             json.dump(data, f, indent=4)
 
@@ -102,11 +111,12 @@ class ProfileManager:
             except Exception:
                 # Failed to load, maybe deleted
                 self.set_last_used_profile_path(None)
-        
+
         # Try to load bundled default profile
         try:
             import sys
-            if getattr(sys, 'frozen', False):
+
+            if getattr(sys, "frozen", False):
                 base_path = Path(sys._MEIPASS)
                 default_path = base_path / "cerebrus" / "resources" / "Titan.json"
                 if not default_path.exists():
@@ -114,25 +124,25 @@ class ProfileManager:
             else:
                 base_path = Path(__file__).resolve().parent.parent
                 default_path = base_path / "resources" / "Titan.json"
-            
+
             # Check for shadow default profile first (user cached settings for default)
             shadow_path = CONFIG_DIR / "default_profile.json"
             if shadow_path.exists():
                 try:
                     profile = Profile.load(shadow_path)
                     self.current_profile = profile
-                    self.current_profile_path = None # Treat as default
+                    self.current_profile_path = None  # Treat as default
                     return profile, None
                 except Exception:
-                    pass # Fallback to bundled
+                    pass  # Fallback to bundled
 
             if default_path.exists():
                 profile = Profile.load(default_path)
                 self.current_profile = profile
-                # We don't set current_profile_path for the default bundled profile 
-                # to avoid overwriting it in the install dir. 
+                # We don't set current_profile_path for the default bundled profile
+                # to avoid overwriting it in the install dir.
                 # It acts as a template until saved elsewhere.
-                self.current_profile_path = None 
+                self.current_profile_path = None
                 return profile, None
         except Exception as e:
             print(f"Failed to load default profile: {e}")
@@ -143,7 +153,9 @@ class ProfileManager:
         self.current_profile_path = None
         return default_profile, None
 
-    def create_new_profile(self, nickname: str, package_name: str, path: Path) -> Profile:
+    def create_new_profile(
+        self, nickname: str, package_name: str, path: Path
+    ) -> Profile:
         profile = Profile(nickname=nickname, package_name=package_name)
         # Validate before saving? User said "Package Name input field would be saved into the profile by the user and cannot be null..."
         # We'll assume the UI handles validation feedback, but we can check here too.
