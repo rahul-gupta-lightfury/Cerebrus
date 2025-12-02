@@ -30,7 +30,7 @@
 1. Download the latest `Cerebrus_Setup.exe` from the Releases page.
 2. Run the installer. It will automatically:
    - Install the Cerebrus application.
-   - Set up necessary dependencies (Python, ADB).
+   - Set up necessary dependencies (Python, ADB, .NET 6/8).
    - Create desktop shortcuts.
 
 ### Running from Source (Developers)
